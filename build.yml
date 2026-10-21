@@ -1,0 +1,567 @@
+name: Build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Create project
+        run: |
+          mkdir -p .
+          cat > settings.gradle.kts <<'EOF_FILE'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "ScreenLimit"
+          include(":app")
+          EOF_FILE
+          mkdir -p .
+          cat > build.gradle.kts <<'EOF_FILE'
+          plugins {
+              id("com.android.application") version "8.7.3" apply false
+              id("org.jetbrains.kotlin.android") version "2.0.21" apply false
+          }
+          EOF_FILE
+          mkdir -p .
+          cat > gradle.properties <<'EOF_FILE'
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          kotlin.code.style=official
+          android.nonTransitiveRClass=true
+          EOF_FILE
+          mkdir -p app
+          cat > app/build.gradle.kts <<'EOF_FILE'
+          plugins {
+              id("com.android.application")
+              id("org.jetbrains.kotlin.android")
+          }
+
+          android {
+              namespace = "com.screenlimit.app"
+              compileSdk = 35
+
+              defaultConfig {
+                  applicationId = "com.screenlimit.app"
+                  minSdk = 26
+                  targetSdk = 35
+                  versionCode = 1
+                  versionName = "1.0"
+              }
+
+              buildTypes {
+                  release {
+                      isMinifyEnabled = false
+                  }
+              }
+
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+          }
+          EOF_FILE
+          mkdir -p app/src/main
+          cat > app/src/main/AndroidManifest.xml <<'EOF_FILE'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+              <application
+                  android:label="@string/app_name"
+                  android:icon="@android:drawable/ic_lock_idle_alarm"
+                  android:supportsRtl="true"
+                  android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+
+                  <activity
+                      android:name=".BlockActivity"
+                      android:exported="false"
+                      android:excludeFromRecents="true"
+                      android:launchMode="singleTask"
+                      android:taskAffinity="com.screenlimit.app.block" />
+
+                  <service
+                      android:name=".BlockerService"
+                      android:exported="true"
+                      android:label="@string/app_name"
+                      android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+                      <intent-filter>
+                          <action android:name="android.accessibilityservice.AccessibilityService" />
+                      </intent-filter>
+                      <meta-data
+                          android:name="android.accessibilityservice"
+                          android:resource="@xml/accessibility_config" />
+                  </service>
+              </application>
+          </manifest>
+          EOF_FILE
+          mkdir -p app/src/main/res/xml
+          cat > app/src/main/res/xml/accessibility_config.xml <<'EOF_FILE'
+          <?xml version="1.0" encoding="utf-8"?>
+          <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+              android:accessibilityEventTypes="typeWindowStateChanged"
+              android:accessibilityFeedbackType="feedbackGeneric"
+              android:accessibilityFlags="flagDefault"
+              android:canRetrieveWindowContent="true"
+              android:notificationTimeout="100"
+              android:description="@string/service_description" />
+          EOF_FILE
+          mkdir -p app/src/main/res/values
+          cat > app/src/main/res/values/strings.xml <<'EOF_FILE'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <string name="app_name">מגביל זמן</string>
+              <string name="service_description">מודד כמה זמן אתה נמצא באינסטגרם, יוטיוב וטיקטוק, וסוגר אותן כשנגמר הזמן היומי. האפליקציה לא קוראת ולא שומרת את התוכן שעל המסך, רק את שם האפליקציה הפתוחה.</string>
+          </resources>
+          EOF_FILE
+          mkdir -p app/src/main/java/com/screenlimit/app
+          cat > app/src/main/java/com/screenlimit/app/UsageStore.kt <<'EOF_FILE'
+          package com.screenlimit.app
+
+          import android.content.Context
+          import android.content.SharedPreferences
+          import java.time.LocalDate
+
+          /** Stores today's usage and the daily limit. All time is combined across the limited apps. */
+          object UsageStore {
+
+              /** Apps that get a daily time limit. Everything else (WhatsApp, Phone, SMS...) is never touched. */
+              val LIMITED_APPS = mapOf(
+                  "com.instagram.android" to "אינסטגרם",
+                  "com.google.android.youtube" to "יוטיוב",
+                  "com.zhiliaoapp.musically" to "טיקטוק",
+                  "com.ss.android.ugc.trill" to "טיקטוק",
+              )
+
+              const val DEFAULT_LIMIT_MIN = 30
+
+              private const val PREFS = "screen_limit"
+              private const val K_DAY = "day"
+              private const val K_USED = "used_ms"
+              private const val K_LIMIT = "limit_min"
+              private const val K_PENDING = "pending_limit_min"
+              private const val K_PENDING_FROM = "pending_from"
+
+              private fun prefs(c: Context): SharedPreferences =
+                  c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+              private fun today(): String = LocalDate.now().toString()
+
+              fun usedMs(c: Context): Long {
+                  val p = prefs(c)
+                  return if (p.getString(K_DAY, "") == today()) p.getLong(K_USED, 0L) else 0L
+              }
+
+              fun addUsed(c: Context, ms: Long) {
+                  if (ms <= 0) return
+                  val p = prefs(c)
+                  val t = today()
+                  val current = if (p.getString(K_DAY, "") == t) p.getLong(K_USED, 0L) else 0L
+                  p.edit().putString(K_DAY, t).putLong(K_USED, current + ms).apply()
+              }
+
+              /** The limit in effect today. A raised limit that was waiting for tomorrow is applied here. */
+              fun limitMinutes(c: Context): Int {
+                  val p = prefs(c)
+                  val pending = p.getInt(K_PENDING, -1)
+                  val from = p.getString(K_PENDING_FROM, null)
+                  if (pending > 0 && from != null && from <= today()) {
+                      p.edit().putInt(K_LIMIT, pending).remove(K_PENDING).remove(K_PENDING_FROM).apply()
+                  }
+                  return p.getInt(K_LIMIT, DEFAULT_LIMIT_MIN)
+              }
+
+              fun pendingLimit(c: Context): Int = prefs(c).getInt(K_PENDING, -1)
+
+              /**
+               * Lowering the limit takes effect right away.
+               * Raising it only takes effect tomorrow, so you can't "cheat" in a weak moment.
+               * Returns true if applied immediately.
+               */
+              fun requestLimit(c: Context, minutes: Int): Boolean {
+                  val current = limitMinutes(c)
+                  val p = prefs(c)
+                  return if (minutes <= current) {
+                      p.edit().putInt(K_LIMIT, minutes).remove(K_PENDING).remove(K_PENDING_FROM).apply()
+                      true
+                  } else {
+                      p.edit()
+                          .putInt(K_PENDING, minutes)
+                          .putString(K_PENDING_FROM, LocalDate.now().plusDays(1).toString())
+                          .apply()
+                      false
+                  }
+              }
+
+              fun remainingMs(c: Context): Long = limitMinutes(c) * 60_000L - usedMs(c)
+
+              fun isOverLimit(c: Context): Boolean = remainingMs(c) <= 0
+          }
+          EOF_FILE
+          mkdir -p app/src/main/java/com/screenlimit/app
+          cat > app/src/main/java/com/screenlimit/app/BlockerService.kt <<'EOF_FILE'
+          package com.screenlimit.app
+
+          import android.accessibilityservice.AccessibilityService
+          import android.content.Intent
+          import android.os.Handler
+          import android.os.Looper
+          import android.os.PowerManager
+          import android.os.SystemClock
+          import android.view.accessibility.AccessibilityEvent
+          import android.widget.Toast
+          import java.time.LocalDate
+
+          /**
+           * Watches which app is in the foreground. While a limited app is open, it counts time.
+           * When today's time runs out, it sends you to the home screen and shows the "time's up" screen.
+           */
+          class BlockerService : AccessibilityService() {
+
+              private val handler = Handler(Looper.getMainLooper())
+              private var currentPkg: String? = null
+              private var lastTick = 0L
+              private var lastBlock = 0L
+
+              private var warnDay = ""
+              private var warned5 = false
+              private var warned1 = false
+
+              private val ignored by lazy { setOf(packageName, "com.android.systemui") }
+
+              private val ticker = object : Runnable {
+                  override fun run() {
+                      onTick()
+                      handler.postDelayed(this, 1000)
+                  }
+              }
+
+              override fun onServiceConnected() {
+                  super.onServiceConnected()
+                  lastTick = SystemClock.elapsedRealtime()
+                  handler.post(ticker)
+              }
+
+              override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+                  if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+                  val pkg = event.packageName?.toString() ?: return
+                  if (pkg in ignored) return
+                  currentPkg = pkg
+                  if (pkg in UsageStore.LIMITED_APPS && UsageStore.isOverLimit(this)) {
+                      block()
+                  }
+              }
+
+              private fun foregroundPackage(): String? {
+                  val fromWindow = try {
+                      rootInActiveWindow?.packageName?.toString()
+                  } catch (e: Exception) {
+                      null
+                  }
+                  return if (fromWindow != null && fromWindow !in ignored) fromWindow else currentPkg
+              }
+
+              private fun onTick() {
+                  val now = SystemClock.elapsedRealtime()
+                  val elapsed = (now - lastTick).coerceIn(0L, 2000L)
+                  lastTick = now
+
+                  val power = getSystemService(PowerManager::class.java)
+                  if (power != null && !power.isInteractive) return  // screen is off
+
+                  val pkg = foregroundPackage() ?: return
+                  if (pkg !in UsageStore.LIMITED_APPS) return
+
+                  UsageStore.addUsed(this, elapsed)
+                  val remaining = UsageStore.remainingMs(this)
+
+                  val today = LocalDate.now().toString()
+                  if (today != warnDay) {
+                      warnDay = today; warned5 = false; warned1 = false
+                  }
+                  if (remaining in 1..5 * 60_000L && !warned5) {
+                      warned5 = true
+                      Toast.makeText(this, "נשארו 5 דקות להיום", Toast.LENGTH_LONG).show()
+                  }
+                  if (remaining in 1..60_000L && !warned1) {
+                      warned1 = true
+                      Toast.makeText(this, "נשארה דקה אחת", Toast.LENGTH_LONG).show()
+                  }
+                  if (remaining <= 0) block()
+              }
+
+              private fun block() {
+                  val now = SystemClock.elapsedRealtime()
+                  if (now - lastBlock < 1500) return
+                  lastBlock = now
+
+                  performGlobalAction(GLOBAL_ACTION_HOME)
+                  val intent = Intent(this, BlockActivity::class.java)
+                      .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                  try {
+                      startActivity(intent)
+                  } catch (e: Exception) {
+                      Toast.makeText(this, "נגמר הזמן להיום", Toast.LENGTH_LONG).show()
+                  }
+              }
+
+              override fun onInterrupt() {}
+
+              override fun onDestroy() {
+                  handler.removeCallbacks(ticker)
+                  super.onDestroy()
+              }
+          }
+          EOF_FILE
+          mkdir -p app/src/main/java/com/screenlimit/app
+          cat > app/src/main/java/com/screenlimit/app/BlockActivity.kt <<'EOF_FILE'
+          package com.screenlimit.app
+
+          import android.app.Activity
+          import android.content.Intent
+          import android.graphics.Color
+          import android.os.Bundle
+          import android.view.Gravity
+          import android.view.View
+          import android.widget.Button
+          import android.widget.LinearLayout
+          import android.widget.TextView
+
+          /** The "time's up" screen shown when a limited app is opened after the daily time ran out. */
+          class BlockActivity : Activity() {
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  val dp = resources.displayMetrics.density
+
+                  val root = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      gravity = Gravity.CENTER
+                      layoutDirection = View.LAYOUT_DIRECTION_RTL
+                      setBackgroundColor(Color.parseColor("#1E2A38"))
+                      setPadding((32 * dp).toInt(), 0, (32 * dp).toInt(), 0)
+                  }
+
+                  root.addView(TextView(this).apply {
+                      text = "⏳"
+                      textSize = 64f
+                      gravity = Gravity.CENTER
+                  })
+                  root.addView(TextView(this).apply {
+                      text = "נגמר הזמן להיום"
+                      textSize = 28f
+                      setTextColor(Color.WHITE)
+                      gravity = Gravity.CENTER
+                      setPadding(0, (16 * dp).toInt(), 0, (8 * dp).toInt())
+                  })
+                  root.addView(TextView(this).apply {
+                      text = "אינסטגרם, יוטיוב וטיקטוק ייפתחו שוב מחר.\nוואטסאפ, שיחות והודעות פתוחים כרגיל."
+                      textSize = 17f
+                      setTextColor(Color.parseColor("#C9D3DE"))
+                      gravity = Gravity.CENTER
+                      setPadding(0, 0, 0, (32 * dp).toInt())
+                  })
+                  root.addView(Button(this).apply {
+                      text = "סגור"
+                      setOnClickListener { goHome() }
+                  })
+
+                  setContentView(root)
+              }
+
+              private fun goHome() {
+                  startActivity(
+                      Intent(Intent.ACTION_MAIN)
+                          .addCategory(Intent.CATEGORY_HOME)
+                          .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                  )
+                  finish()
+              }
+
+              @Deprecated("Deprecated in Java")
+              override fun onBackPressed() {
+                  goHome()
+              }
+          }
+          EOF_FILE
+          mkdir -p app/src/main/java/com/screenlimit/app
+          cat > app/src/main/java/com/screenlimit/app/MainActivity.kt <<'EOF_FILE'
+          package com.screenlimit.app
+
+          import android.app.Activity
+          import android.content.Intent
+          import android.graphics.Color
+          import android.os.Bundle
+          import android.provider.Settings
+          import android.text.InputType
+          import android.view.Gravity
+          import android.view.View
+          import android.widget.Button
+          import android.widget.EditText
+          import android.widget.LinearLayout
+          import android.widget.ScrollView
+          import android.widget.TextView
+          import android.widget.Toast
+
+          class MainActivity : Activity() {
+
+              private lateinit var statusText: TextView
+              private lateinit var enableButton: Button
+              private lateinit var usageText: TextView
+              private lateinit var pendingText: TextView
+              private lateinit var limitInput: EditText
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  val dp = resources.displayMetrics.density
+                  val pad = (20 * dp).toInt()
+
+                  val col = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      layoutDirection = View.LAYOUT_DIRECTION_RTL
+                      setPadding(pad, pad * 2, pad, pad)
+                  }
+
+                  fun label(t: String, size: Float = 16f, bold: Boolean = false) = TextView(this).apply {
+                      text = t
+                      textSize = size
+                      gravity = Gravity.START
+                      textAlignment = View.TEXT_ALIGNMENT_VIEW_START
+                      setTextColor(Color.parseColor("#1E2A38"))
+                      if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
+                      setPadding(0, (6 * dp).toInt(), 0, (6 * dp).toInt())
+                  }
+
+                  col.addView(label("מגביל זמן", 28f, true))
+
+                  statusText = label("")
+                  col.addView(statusText)
+                  enableButton = Button(this).apply {
+                      text = "הפעל הרשאת נגישות"
+                      setOnClickListener { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+                  }
+                  col.addView(enableButton)
+
+                  col.addView(label("היום", 20f, true).apply { setPadding(0, pad, 0, 0) })
+                  usageText = label("", 18f)
+                  col.addView(usageText)
+
+                  col.addView(label("מגבלה יומית (דקות, סה״כ לכל האפליקציות)", 20f, true).apply { setPadding(0, pad, 0, 0) })
+                  limitInput = EditText(this).apply {
+                      inputType = InputType.TYPE_CLASS_NUMBER
+                      textSize = 20f
+                  }
+                  col.addView(limitInput)
+                  col.addView(Button(this).apply {
+                      text = "שמור"
+                      setOnClickListener { saveLimit() }
+                  })
+                  pendingText = label("", 14f)
+                  col.addView(pendingText)
+                  col.addView(label("הורדת המגבלה נכנסת לתוקף מיד. העלאה שלה נכנסת לתוקף רק מחר, כדי שלא יהיה קל לוותר לעצמך ברגע של חולשה.", 14f).apply {
+                      setTextColor(Color.GRAY)
+                  })
+
+                  col.addView(label("אפליקציות מוגבלות", 20f, true).apply { setPadding(0, pad, 0, 0) })
+                  col.addView(label(UsageStore.LIMITED_APPS.values.distinct().joinToString(" · ")))
+                  col.addView(label("כל השאר, כולל וואטסאפ, שיחות והודעות, תמיד פתוח.", 14f).apply {
+                      setTextColor(Color.GRAY)
+                  })
+
+                  setContentView(ScrollView(this).apply {
+                      setBackgroundColor(Color.parseColor("#F5F7FA"))
+                      addView(col)
+                  })
+              }
+
+              override fun onResume() {
+                  super.onResume()
+                  refresh()
+              }
+
+              private fun isServiceEnabled(): Boolean {
+                  val enabled = Settings.Secure.getString(
+                      contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+                  ) ?: return false
+                  return enabled.split(':').any { it.startsWith("$packageName/") }
+              }
+
+              private fun refresh() {
+                  val on = isServiceEnabled()
+                  statusText.text = if (on) "✅ ההגבלה פעילה" else "⚠️ ההגבלה כבויה. צריך להפעיל הרשאת נגישות."
+                  enableButton.visibility = if (on) View.GONE else View.VISIBLE
+
+                  val limit = UsageStore.limitMinutes(this)
+                  val usedMin = UsageStore.usedMs(this) / 60_000
+                  val leftMin = (UsageStore.remainingMs(this).coerceAtLeast(0) + 59_999) / 60_000
+                  usageText.text = "השתמשת $usedMin דקות מתוך $limit. נשארו $leftMin דקות."
+                  limitInput.setText(limit.toString())
+
+                  val pending = UsageStore.pendingLimit(this)
+                  pendingText.text = if (pending > 0) "מחר המגבלה תעלה ל-$pending דקות." else ""
+              }
+
+              private fun saveLimit() {
+                  val minutes = limitInput.text.toString().toIntOrNull()
+                  if (minutes == null || minutes < 0 || minutes > 600) {
+                      Toast.makeText(this, "הכנס מספר בין 0 ל-600", Toast.LENGTH_SHORT).show()
+                      return
+                  }
+                  val immediate = UsageStore.requestLimit(this, minutes)
+                  Toast.makeText(
+                      this,
+                      if (immediate) "נשמר" else "המגבלה החדשה תיכנס לתוקף מחר",
+                      Toast.LENGTH_LONG
+                  ).show()
+                  refresh()
+              }
+          }
+          EOF_FILE
+
+      - name: Build
+        run: |
+          gradle assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk ScreenLimit.apk
+
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: ScreenLimit ${{ github.run_number }}
+          files: ScreenLimit.apk
+          make_latest: true
