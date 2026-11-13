@@ -85,7 +85,8 @@ module.exports = function createAuth(db, { adminUsers = [], limits = {} } = {}) 
       const uname = normName(username);
       if (q.byName.get(uname)) throw new AuthError('taken', 'שם המשתמש הזה כבר תפוס.', 409);
       const id = 'u_' + crypto.randomBytes(12).toString('base64url'), salt = crypto.randomBytes(16).toString('hex');
-      const hash = await hashSecret(password, salt), first = q.count.get().n === 0;
+      // with no admins named in the settings, whoever registers first runs the world
+      const hash = await hashSecret(password, salt), first = admins.size === 0 && q.count.get().n === 0;
       try { q.insert.run(id, username, uname, salt, hash, null, null, first ? 1 : 0, Date.now()); }
       catch (e) { throw new AuthError('taken', 'שם המשתמש הזה כבר תפוס.', 409); }
       const recovery = await setRecovery(id);

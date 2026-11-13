@@ -213,6 +213,17 @@ test('a suspended account is cut off at once and cannot return', async () => {
   (await open(ben.token)).close();
 });
 
+test('when admins are named in the settings, registering first does not make you one', async () => {
+  const d2 = fs.mkdtempSync(path.join(os.tmpdir(), 'luma-test-'));
+  const two = createApp({ dataDir: d2, worldFile: path.join(dir, 'world.html'), adminUsers: ['Maya'] });
+  await new Promise((r) => two.server.listen(0, r));
+  const b2 = 'http://127.0.0.1:' + two.server.address().port;
+  const reg = (username) => fetch(b2 + '/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password: 'secret12', agree: true }) }).then((r) => r.json());
+  assert.equal((await reg('stranger')).user.admin, false);
+  assert.equal((await reg('maya')).user.admin, true);
+  await two.stop(); fs.rmSync(d2, { recursive: true, force: true });
+});
+
 test('pages: the world is served with the connector injected', async () => {
   const html = await fetch(base + '/world').then((r) => r.text());
   assert.ok(html.includes('<script src="/shim.js"></script>') && html.includes('<p>world</p>'));
