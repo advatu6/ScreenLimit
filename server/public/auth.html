@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>איי לומה · כניסה</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#fbf6ec">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@700&family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#4a3728;--bg:#fbf6ec;--glow:#f2c078;--line:rgba(74,55,40,.18);--accent:#b9603f}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:linear-gradient(#dff0ee,#fbf6ec 60%,#fdf3e3);color:var(--ink);font-family:"Heebo","Arial Hebrew",Arial,sans-serif;font-size:16px}
+main{max-width:380px;margin:0 auto;padding:6vh 18px 40px;display:flex;flex-direction:column;gap:16px}
+h1{font-family:"Amatic SC","Heebo",sans-serif;font-size:64px;line-height:1;margin:0;text-align:center}
+.sub{text-align:center;margin:0;opacity:.8}
+.card{background:rgba(255,252,245,.96);border:1px solid var(--line);border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:12px;box-shadow:0 6px 24px rgba(74,55,40,.08)}
+.tabs{display:flex;gap:6px}
+.tabs button{flex:1;background:transparent;border:1px solid var(--line);border-radius:999px;padding:8px 10px;font:inherit;color:inherit;cursor:pointer}
+.tabs button[aria-selected=true]{background:var(--ink);color:var(--bg);font-weight:700}
+label{display:flex;flex-direction:column;gap:5px;font-size:14px}
+input[type=text],input[type=password]{font:inherit;color:inherit;padding:11px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(74,55,40,.05)}
+input:focus-visible,button:focus-visible{outline:2px solid var(--glow);outline-offset:2px}
+.check{flex-direction:row;gap:10px;align-items:flex-start;line-height:1.45}
+.check input{width:20px;height:20px;flex:none;margin-top:1px;accent-color:var(--glow)}
+.primary{font:inherit;font-weight:700;color:#2a1d05;background:var(--glow);border:0;border-radius:999px;padding:12px 18px;cursor:pointer}
+.primary:disabled{opacity:.5;cursor:default}
+.link{background:none;border:0;font:inherit;color:var(--accent);cursor:pointer;padding:4px;text-decoration:underline}
+.err{color:#b9442e;font-size:14px;min-height:1.3em;margin:0}
+.code{font-size:24px;font-weight:700;letter-spacing:2px;text-align:center;direction:ltr;background:rgba(74,55,40,.07);border-radius:12px;padding:14px;user-select:all}
+.muted{opacity:.75;font-size:14px;margin:0;line-height:1.5}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <h1>איי לומה</h1>
+  <p class="sub">עולם של איים, דוכנים ואנשים.</p>
+
+  <form class="card" id="form" novalidate>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tLogin" aria-selected="true">כניסה</button>
+      <button type="button" role="tab" id="tReg" aria-selected="false">הרשמה</button>
+    </div>
+    <label>שם משתמש<input type="text" id="username" maxlength="16" autocomplete="username" autocapitalize="none" required></label>
+    <label id="recRow" hidden>קוד שחזור<input type="text" id="recovery" maxlength="14" dir="ltr" autocomplete="off" placeholder="XXXX-XXXX-XXXX"></label>
+    <label><span id="passLabel">סיסמה</span><input type="password" id="password" maxlength="128" autocomplete="current-password" required></label>
+    <label class="check" id="agreeRow" hidden><input type="checkbox" id="agree"><span>קראתי את כללי העולם ותנאי השימוש ואני מסכים/ה להם. הנוסח המלא מוצג בכניסה הראשונה לעולם.</span></label>
+    <p class="err" id="err" role="alert"></p>
+    <button class="primary" id="go">כניסה</button>
+    <button type="button" class="link" id="forgot">שכחתי סיסמה</button>
+  </form>
+
+  <div class="card" id="codeCard" hidden>
+    <b>קוד השחזור שלך</b>
+    <div class="code" id="code"></div>
+    <p class="muted">זו הדרך היחידה לאפס את הסיסמה, כי אנחנו לא אוספים אימייל. הקוד מוצג רק עכשיו: כדאי לצלם מסך או לרשום אותו במקום בטוח.</p>
+    <button class="primary" id="enter">שמרתי, אפשר להיכנס</button>
+  </div>
+</main>
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+let mode = 'login';
+// already signed in on this device: go straight in
+try { if (localStorage.getItem('luma-token') && localStorage.getItem('luma-uid')) location.replace('/world'); } catch (e) {}
+
+function setMode(m) {
+  mode = m; $('err').textContent = '';
+  $('tLogin').setAttribute('aria-selected', m === 'login'); $('tReg').setAttribute('aria-selected', m === 'register');
+  $('agreeRow').hidden = m !== 'register'; $('recRow').hidden = m !== 'reset';
+  $('passLabel').textContent = m === 'reset' ? 'סיסמה חדשה' : m === 'register' ? 'סיסמה (6 תווים לפחות)' : 'סיסמה';
+  $('password').autocomplete = m === 'login' ? 'current-password' : 'new-password';
+  $('go').textContent = m === 'login' ? 'כניסה' : m === 'register' ? 'הרשמה' : 'איפוס הסיסמה וכניסה';
+  $('forgot').textContent = m === 'reset' ? 'חזרה לכניסה' : 'שכחתי סיסמה';
+}
+$('tLogin').onclick = () => setMode('login');
+$('tReg').onclick = () => setMode('register');
+$('forgot').onclick = () => setMode(mode === 'reset' ? 'login' : 'reset');
+
+$('form').addEventListener('submit', async (e) => {
+  e.preventDefault(); $('err').textContent = '';
+  const body = { username: $('username').value.trim(), password: $('password').value };
+  if (mode === 'register') { if (!$('agree').checked) { $('err').textContent = 'כדי להירשם צריך לאשר את תנאי השימוש.'; return; } body.agree = true; }
+  if (mode === 'reset') body.recovery = $('recovery').value.trim();
+  $('go').disabled = true;
+  try {
+    const r = await fetch('/api/' + mode, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { $('err').textContent = j.message || 'משהו השתבש. אפשר לנסות שוב.'; return; }
+    try { localStorage.setItem('luma-token', j.token); localStorage.setItem('luma-uid', j.user.id); }
+    catch (e2) { $('err').textContent = 'הדפדפן חוסם שמירה מקומית, ואי אפשר להישאר מחובר/ת. כדאי לצאת ממצב גלישה פרטית.'; return; }
+    if (j.recovery) { $('form').hidden = true; $('codeCard').hidden = false; $('code').textContent = j.recovery; $('enter').focus(); }
+    else location.replace('/world');
+  } catch (e2) { $('err').textContent = 'אין חיבור לשרת כרגע. אפשר לנסות שוב.'; }
+  finally { $('go').disabled = false; }
+});
+$('enter').onclick = () => location.replace('/world');
+</script>
+</body>
+</html>

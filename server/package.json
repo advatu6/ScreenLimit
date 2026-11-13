@@ -1,0 +1,23 @@
+{
+  "name": "luma-server",
+  "version": "0.1.0",
+  "description": "The server behind the Luma islands world: accounts, live presence, stalls, private messages.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "better-sqlite3": "^13.1.1",
+    "express": "^5.3.0",
+    "socket.io": "^4.8.4"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.4"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  }
+}
