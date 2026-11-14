@@ -140,6 +140,22 @@ a.primary{text-decoration:none;text-align:center;display:block}
 .hud>.row{flex:none}
 @media(max-width:520px){.zone h1{font-size:32px}.hud .chip{padding:6px 10px;gap:5px}}
 .gelt{width:16px;height:16px;border-radius:50%;background:#9cc4e8;border:2px solid #f2c078;flex:none;display:inline-block}
+.luckgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:min(100%,320px);align-self:center;direction:ltr;flex:none}
+.luck{aspect-ratio:1;border-radius:16px;border:2px solid var(--line);background:rgba(var(--t),.05);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;font-size:13px;font-weight:600;line-height:1.2;padding:6px;direction:rtl;transition:transform .1s,box-shadow .1s,background .1s}
+.luck i{width:20px;height:25px;border-radius:8px 8px 11px 11px;border:2px solid rgba(90,62,43,.45);display:block;flex:none}
+.luck.on{background:#fff3c9;border-color:var(--glow);transform:scale(1.07);box-shadow:0 0 22px rgba(242,192,120,.95)}
+.luck.on i{background:#fff8dc!important;box-shadow:0 0 12px #ffc24a}
+.luck.won{border-color:var(--accent)}
+.luckmid{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:54px;color:var(--accent)}
+.brow{display:flex;gap:6px;align-items:center;direction:ltr}
+.bres{min-width:112px;font-size:14px;font-weight:600;direction:rtl;text-align:start;padding-inline-start:6px}
+.tilebtn{background:#fffaf0;cursor:pointer;padding:0}
+.lgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;width:min(100%,320px);direction:ltr}
+.lgrid button{aspect-ratio:1;border-radius:12px;border:2px solid var(--line);background:rgba(var(--t),.12);padding:0}
+.lgrid button.on{background:#f2c078;border-color:#e3a857;box-shadow:0 0 14px rgba(242,192,120,.9)}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:min(100%,300px);direction:ltr}
+.sgrid button{aspect-ratio:1;border-radius:26px;border:3px solid rgba(90,62,43,.35);padding:0;transition:transform .08s,filter .08s}
+@media(prefers-reduced-motion:reduce){.luck,.sgrid button{transition:none}}
 [hidden]{display:none!important}
 @media(prefers-reduced-motion:reduce){#toast{transition:none}}
 </style>
@@ -246,7 +262,7 @@ const ACCS={none:{n:'בלי אביזר',p:0},bowtie:{n:'עניבת פרפר',p:3
 const FACES={smile:'חיוך',grin:'צחוק',wow:'הפתעה',blush:'סומק',cool:'משקפי שמש'};
 const WALLS=['#f1e2cf','#d8e8d2','#f3d9d9','#d6e6ee','#e6dcf2','#f6ecc4'],FLOORS=['#dcc09a','#c9a57e','#e6d8c0','#cfd8c0','#e8cdb8','#b9a590'];
 const DAYSKY=['#4f9fe0','#9fd3f0','#ffd9a8'];
-const ZD={plaza:'תיבת מתנה יומית, גלגל המזל, החנות והבית',beach:'דיג בלגונה, צנצנת הגחליליות ורחבת ריקודים',forest:'משחק זיכרון, חידת הינשוף, פטריית קפיצה ומעגל פיות',peak:'גשם כוכבים וגבישים',neon:'מועדון קצב, טריוויה יומית, משחקי מילים ומיזוג, קפה',garden:'שש ערוגות לשתילה וקטיף',market:'דוכנים של אנשים אמיתיים, אוהל הריפוי ולוח הדוכנים',home:'החדר שלך: רהיטים, קירות ורצפה'};
+const ZD={plaza:'תיבת מתנה יומית, פנסי המזל, החנות והבית',beach:'דיג בלגונה, צנצנת הגחליליות ורחבת ריקודים',forest:'משחק זיכרון, חידת הינשוף, פטריית קפיצה ומעגל פיות',peak:'גשם כוכבים וגבישים',neon:'מועדון קצב, טריוויה יומית, משחקי מילים ומיזוג, אולם משחקים, קפה',garden:'שש ערוגות לשתילה וקטיף',market:'דוכנים של אנשים אמיתיים, אוהל הריפוי ולוח הדוכנים',home:'החדר שלך: רהיטים, קירות ורצפה'};
 const SCALES={plaza:[262,294,330,392,440,523],beach:[294,330,370,440,494,587],forest:[220,262,294,330,392,440],peak:[330,392,440,494,587,659],neon:[220,247,294,330,370,440],garden:[262,330,349,392,440,523],market:[247,277,311,370,415,494],home:[262,330,392,440,523,587]};
 const ACH=[{id:'rich',n:'אספן ניצוצות',d:'להרוויח 1,000 ניצוצות בסך הכול',g:1000,v:()=>S.earned||0},{id:'fisher',n:'דייג ותיק',d:'לדוג 30 דגים',g:30,v:()=>S.q.fish||0},{id:'farmer',n:'אצבעות ירוקות',d:'לקטוף 20 יבולים',g:20,v:()=>S.q.harvest||0},{id:'lucky',n:'בר מזל',d:'להשיג פריט נדיר ראשון',g:1,v:()=>rareCount()},{id:'hoard',n:'אוצר נדיר',d:'להשיג 6 פריטים נדירים שונים',g:6,v:()=>rareCount()},{id:'home',n:'מעצב פנים',d:'להניח 8 רהיטים בבית',g:8,v:()=>S.home.length},{id:'streak',n:'שבוע רצוף',d:'להיכנס 7 ימים ברצף',g:7,v:()=>S.streak||0},{id:'explorer',n:'סיירת איים',d:'לבקר בכל ששת האיים',g:6,v:()=>S.q.zones.length},{id:'brain',n:'ראש גדול',d:'לענות נכון על כל חמש שאלות הטריוויה',g:1,v:()=>S.perfect||0},{id:'words',n:'אלוף המילים',d:'לנצח 10 פעמים בנחש את המילה',g:10,v:()=>S.q.word||0}];
 const ZONES={
@@ -284,7 +300,7 @@ const OBJS={
     N('אורי',860,420,'#6fb7ff','wizard',['דרך הטלסקופ רואים את כל האיים. אפילו את הבית שלך.','הלילה יש גשם כוכבים. תופסים כוכבים, נזהרים מסלעים.']),
     N('שלג',470,540,'#f4efff','cap',['ברר… מי הביא אותי לכאן בלי צעיף?','הגבישים שרים כשנוגעים בהם. נסו לעבור לידם.'])],
   neon:[P('plaza',700,240),{type:'game',game:'rhythm',label:'מועדון הקצב',x:420,y:340,act:1,solid:60},{type:'game',game:'trivia',label:'הטריוויה היומית',x:980,y:350,act:1,solid:34},{type:'game',game:'word',label:'נחש את המילה',x:1040,y:610,act:1,solid:44},{type:'cafe',x:380,y:610,act:1,solid:56},{type:'game',game:'merge',label:'מיזוג ניאון',x:800,y:660,act:1,solid:34},
-    D('bldg',560,268,44),D('bldg',850,268,44),D('bldg',250,440,44),D('bldg',1150,450,44),D('lantern',560,420),D('lantern',840,420),D('lantern',560,560),D('lantern',840,560),
+    D('bldg',560,268,44),D('bldg',850,268,44),D('bldg',250,440,44),{type:'arcade',x:1150,y:450,act:1,solid:58},D('lantern',560,420),D('lantern',840,420),D('lantern',560,560),D('lantern',840,560),
     N('דנה',490,650,'#ffc857','headphones',['קפה שלישי היום. אל תשפטו.','במטבח של הקפה מבשלים ממה שגדל בגינה וממה שדגים בלגונה.','אמרתי שאני יוצאת רק לחצי שעה. זה היה אתמול.','כוס קפה בקיוסק נותנת הליכה מהירה לדקה. מדעית זה לא מוכח.']),
     N('עומר',560,380,'#6fb7ff','cap',['מחר יש לי דדליין. אז ברור שאני כאן.','אני במועדון רק בשביל המוזיקה. והנשנושים.','מי שמחזיק רצף של עשר במועדון מקבל בונוס על כל תו.']),
     N('שיר',900,410,'#ff8fc7','bow',['מה בירת אוסטרליה? רמז: לא סידני. בדקתי פעמיים.','שכר הדירה באי הזה עלה שוב. לפחות הנוף בחינם.','הטריוויה מתחלפת כל יום. אני לא הולכת לישון לפני שעניתי.'])],
@@ -302,7 +318,7 @@ for(const z in OBJS)OBJS[z]=OBJS[z].filter(o=>o.type!=='npc');
 for(const o of OBJS.plaza)if(o.type==='deco'&&o.kind==='tree'){if((o.x===330&&o.y===640)||(o.x===1080&&o.y===640))o.xev=1;else if(o.x===280&&o.y===360)o.xev=2;}
 OBJS.beach.push({type:'evgame',x:820,y:340,act:1,solid:40,ev:1});
 OBJS.plaza.push({type:'evmark',x:340,y:610,act:1,solid:46,ev:1},{type:'evshop',x:1090,y:600,act:1,solid:62,ev:1},{type:'evbig',x:270,y:410,act:1,solid:30,ev:2});
-const GAMES={merge:'מיזוג ניאון',rhythm:'מועדון הקצב',trivia:'הטריוויה היומית',word:'נחש את המילה',fishing:'דיג בלגונה',fireflies:'צנצנת הגחליליות',memory:'שולחן הזיכרון',stars:'גשם כוכבים'};
+const GAMES={bulls:'בול פגיעה',lights:'אורות הניאון',scramble:'מילה מבולבלת',simon:'רצף הניאון',merge:'מיזוג ניאון',rhythm:'מועדון הקצב',trivia:'הטריוויה היומית',word:'נחש את המילה',fishing:'דיג בלגונה',fireflies:'צנצנת הגחליליות',memory:'שולחן הזיכרון',stars:'גשם כוכבים'};
 const QUESTS=[
   {id:'sparks',t:'לאסוף 15 ניצוצות מהאדמה',goal:15,get:()=>S.q.sparks,r:30},
   {id:'games',t:'לשחק בכל ארבעת המשחקים',goal:4,get:()=>S.q.games.length,r:50},
@@ -488,9 +504,6 @@ function drawChest(o){const x=o.x,y=o.y,full=S.gift!==today();ell(x,y+3,32,8,'rg
 function drawDance(x,y){const cols=['#f0a08c','#ffc857','#a8d8c4','#cdbdf0','#6fb7ff','#ff8fc7'];ell(x,y,100,42,'#8a6a52');ctx.save();ctx.beginPath();ctx.ellipse(x,y,92,37,0,0,7);ctx.clip();
   for(let i=0;i<6;i++)for(let j=0;j<4;j++){ctx.fillStyle=rgba(cols[(i+j*2+Math.floor(T*2))%6],.75);ctx.fillRect(x-96+i*32,y-40+j*20,30,18);}ctx.restore();glow(x,y,130,cols[Math.floor(T*2)%6],.18);
   for(let i=0;i<3;i++){const p=(T*.5+i/3)%1;ctx.globalAlpha=1-p;ctx.font='700 20px Heebo, sans-serif';ctx.textAlign='center';ctx.fillStyle='#f4efff';ctx.fillText('♪',x-50+i*50+Math.sin(T*2+i)*8,y-50-p*50);ctx.globalAlpha=1;}}
-function wheelFace(x,y,r,rot){let a=rot;for(const s of WHEEL){const b=a+s.w/100*6.2832;ctx.beginPath();ctx.moveTo(x,y);ctx.arc(x,y,r,a,b);ctx.closePath();ctx.fillStyle=s.c;ctx.fill();ctx.lineWidth=Math.max(1,r/60);ctx.strokeStyle='#5a3e2b';ctx.stroke();a=b;}circ(x,y,r*.14,'#5a3e2b');circ(x,y,r*.07,'#ffcf7a');}
-function drawWheelObj(o){const x=o.x,y=o.y,free=S.spin!==today();ell(x,y+3,34,8,'rgba(0,0,0,.25)');poly([x-22,y,x+22,y,x+5,y-60,x-5,y-60],'#8a6a52');glow(x,y-78,90,'#ffcf7a',free?.3:.15);circ(x,y-78,50,'#8a6a52');wheelFace(x,y-78,45,T*.5);poly([x-8,y-134,x+8,y-134,x,y-118],'#f0a08c');
-  label(x,y-152,free?'גלגל המזל: סיבוב חינם':'גלגל המזל','rgba(255,207,122,.92)','#2a1d05');}
 function drawOwl(o){const x=o.x,y=o.y,q=S.owl!==today();ell(x,y+3,30,8,'rgba(0,0,0,.25)');rr(x-22,y-30,44,30,6,'#6a4a3a');ell(x,y-30,22,7,'#8a6248');
   const by=y-58+Math.sin(T*2)*1.5;ell(x,by,20,24,'#a87a5c');ell(x,by+6,12,14,'#e8d6c4');poly([x-18,by-16,x-14,by-32,x-4,by-20],'#a87a5c');poly([x+18,by-16,x+14,by-32,x+4,by-20],'#a87a5c');circ(x-8,by-8,8,'#fff');circ(x+8,by-8,8,'#fff');if((T%3.7)>.12){circ(x-8,by-8,4,'#5a3e2b');circ(x+8,by-8,4,'#5a3e2b');}poly([x-3,by-2,x+3,by-2,x,by+5],'#ffc857');
   label(x,y-104,q?'חידת הינשוף':'הינשוף החכם',q?'rgba(255,207,122,.92)':'rgba(23,19,58,.8)',q?'#2a1d05':'#f4efff');}
@@ -735,6 +748,7 @@ function draw(){
     else if(o.type==='npc')list.push({y:o.y,d:()=>drawActor(o)});
     else if(o.type==='chest'){if(!gone(o))list.push({y:o.y,d:()=>drawChest(o)});}
     else if(o.type==='wheel')list.push({y:o.y,d:()=>drawWheelObj(o)});
+    else if(o.type==='arcade')list.push({y:o.y,d:()=>drawArcade(o)});
     else if(o.type==='owl')list.push({y:o.y,d:()=>drawOwl(o)});
     else if(o.type==='plot')list.push({y:o.y,d:()=>drawPlot(o)});
     else if(o.type==='cafe')list.push({y:o.y,d:()=>drawCafe(o)});
@@ -766,11 +780,11 @@ const curZoneId=()=>zone==='home'?homeId:zone;
 
 /* ---------- update ---------- */
 function nearestAct(){let best=null,bd=1e9;for(const o of OBJS[zone]){if(!o.act||gone(o))continue;const d=Math.hypot(o.x-me.x,(o.y-me.y)*1.4);if(d<bd){bd=d;best=o;}}return bd<115?best:null;}
-function actLabel(o){return o.type==='portal'?'לעבור אל '+ZONES[o.to].name:o.type==='npc'?'לדבר עם '+o.name:o.type==='game'?'לשחק: '+o.label:o.type==='shop'?'להיכנס לחנות':o.type==='house'?'להיכנס הביתה':o.type==='chest'?'לפתוח את התיבה':o.type==='wheel'?'לסובב את גלגל המזל':o.type==='owl'?'לדבר עם הינשוף':o.type==='plot'?(plotState(o.i)?(plotState(o.i).k>=1?'לקטוף':'לבדוק את הצמח'):'לשתול כאן'):o.type==='cafe'?'להיכנס לקפה ירח':o.type==='stall'?(stallAt(o.slot)?'להיכנס לדוכן: '+stallAt(o.slot).name:'דוכן פנוי · לפתוח דוכן'):o.type==='tipi'?'להיכנס לאוהל הריפוי':o.type==='office'?'להיכנס למשרד השוק':o.type==='evmark'?(evDoneToday()?E().mark.name:E().mark.act):o.type==='evshop'?'להיכנס לדוכן '+E().name:o.type==='evbig'?E().lucky.n:o.type==='evgame'?'לשחק: '+E().game.n:o.type==='board'?'לראות את לוח הדוכנים':'לצאת לכיכר';}
+function actLabel(o){return o.type==='portal'?'לעבור אל '+ZONES[o.to].name:o.type==='npc'?'לדבר עם '+o.name:o.type==='game'?'לשחק: '+o.label:o.type==='shop'?'להיכנס לחנות':o.type==='house'?'להיכנס הביתה':o.type==='chest'?'לפתוח את התיבה':o.type==='wheel'?'לנסות את פנסי המזל':o.type==='arcade'?'להיכנס לאולם המשחקים':o.type==='owl'?'לדבר עם הינשוף':o.type==='plot'?(plotState(o.i)?(plotState(o.i).k>=1?'לקטוף':'לבדוק את הצמח'):'לשתול כאן'):o.type==='cafe'?'להיכנס לקפה ירח':o.type==='stall'?(stallAt(o.slot)?'להיכנס לדוכן: '+stallAt(o.slot).name:'דוכן פנוי · לפתוח דוכן'):o.type==='tipi'?'להיכנס לאוהל הריפוי':o.type==='office'?'להיכנס למשרד השוק':o.type==='evmark'?(evDoneToday()?E().mark.name:E().mark.act):o.type==='evshop'?'להיכנס לדוכן '+E().name:o.type==='evbig'?E().lucky.n:o.type==='evgame'?'לשחק: '+E().game.n:o.type==='board'?'לראות את לוח הדוכנים':'לצאת לכיכר';}
 function doAct(o){me.tx=me.ty=null;me.pending=null;
   if(o.type==='portal')travel(o.to);else if(o.type==='house')travel('home');else if(o.type==='door')travel('plaza','home');
   else if(o.type==='chest'){const n=Math.floor(rand(15,31));S.gift=today();gain(n);pops.push({x:o.x,y:o.y,t:0,text:'+'+n});let m='מתנה יומית: '+n+' ניצוצות.';if(Math.random()<.12)m+=' ובפנים גם פריט נדיר: '+giveRare()+'!';toast(m+' תיבה חדשה תופיע מחר.');beep(660,.1);beep(990,.14);persist();refreshHud();}
-  else if(o.type==='wheel')openWheel();else if(o.type==='owl')openOwl();else if(o.type==='plot'){actPlot(o);lastAct=null;}
+  else if(o.type==='wheel')openWheel();else if(o.type==='arcade')openArcade();else if(o.type==='owl')openOwl();else if(o.type==='plot'){actPlot(o);lastAct=null;}
   else if(o.type==='cafe')openCafe();
   else if(o.type==='stall'){const st=stallAt(o.slot);if(st)openStall(st);else openOffice();}else if(o.type==='tipi')openTipi();else if(o.type==='office')openOffice();else if(o.type==='board')openBoard();else if(o.type==='evmark')evDaily(o);else if(o.type==='evshop')openEvent('shop');else if(o.type==='evbig')openSpin();else if(o.type==='evgame')openEvGame();
   else if(o.type==='shop')openShop();else if(o.type==='game')openGame(o.game);
@@ -875,18 +889,23 @@ function wheelPrize(s){if(s.coins){gain(s.coins);return'זכית ב-'+s.coins+' 
   if(s.kind==='furn'){const ks=Object.keys(FURN).filter(k=>!FURN[k].rare&&!FURN[k].ev),k=ks[Math.floor(Math.random()*ks.length)];S.furn[k]=(S.furn[k]||0)+1;return'זכית ברהיט: '+FURN[k].n+'. הוא מחכה בבית שלך.';}
   if(s.kind==='hat'){const ks=Object.keys(HATS).filter(k=>!HATS[k].rare&&!HATS[k].ev&&!S.hats.includes(k));if(!ks.length){gain(40);return'כל כובעי החנות כבר אצלך, אז קיבלת 40 ניצוצות.';}const k=ks[Math.floor(Math.random()*ks.length)];S.hats.push(k);return'זכית בכובע: '+HATS[k].n+'. הוא מחכה במסך הדמות.';}
   return'פריט נדיר! זכית ב: '+giveRare()+'.';}
-function openWheel(){openSheet('גלגל המזל',b=>{const c=el('canvas',{style:'width:200px;height:200px;align-self:center;flex:none'});c.width=c.height=460;const x=c.getContext('2d');x.scale(2,2);let rot=-Math.PI/2,spinning=false;
-  const paint=()=>{const old=ctx;ctx=x;x.clearRect(0,0,230,230);circ(115,120,108,'#2a2350');wheelFace(115,120,100,rot);poly([103,2,127,2,115,28],'#ff7d6b');ctx=old;};paint();
+function drawWheelObj(o){const x=o.x,y=o.y,free=S.spin!==today(),on=Math.floor(T*3)%8;ell(x,y+4,58,14,'rgba(0,0,0,.25)');
+  rr(x-50,y-126,8,126,3,'#b89472');rr(x+42,y-126,8,126,3,'#b89472');rr(x-58,y-136,116,12,5,'#9a7352');rr(x-50,y-84,100,6,3,'#b89472');
+  for(let i=0;i<8;i++){const row=i<4?0:1,lx=x-33+(i%4)*22,ly=y-118+row*46,c=mix(WHEEL[i].c,'#ffffff',.35),lit=i===on;strokeLine([lx,ly-6,lx,ly],1.4,'#7a5a44');if(lit)glow(lx,ly+10,30,'#ffc24a',free?1.6:1);rr(lx-7,ly,14,19,5,lit?'#fff3c9':c);rr(lx-5,ly-2,10,4,2,'#8a6a52');}
+  label(x,y-154,free?'פנסי המזל: ניסיון חינם':'פנסי המזל','rgba(255,207,122,.92)','#2a1d05');}
+function openWheel(){openSheet('פנסי המזל',b=>{let busy=false,lit=-1;const ring=[0,1,2,5,8,7,6,3],cells=[];
+  const grid=el('div',{class:'luckgrid'}),mid=el('div',{class:'luckmid',text:'?'});
+  for(let p=0;p<9;p++){if(p===4){grid.append(mid);continue;}const k=ring.indexOf(p),w=WHEEL[k],c=el('div',{class:'luck'},el('i',{style:'background:'+mix(w.c,'#ffffff',.35)}),el('span',{text:w.t}));cells[k]=c;grid.append(c);}
+  const show=()=>cells.forEach((c,k)=>c.classList.toggle('on',k===lit));
   const res=el('p',{style:'text-align:center;font-weight:700;min-height:1.5em'}),note=el('p',{class:'muted',style:'text-align:center'});
-  const setBtn=()=>{const free=S.spin!==today();btn.textContent=free?'סיבוב חינם':'סיבוב ב-'+SPIN_COST+' ניצוצות';btn.disabled=spinning||(!free&&S.coins<SPIN_COST);note.textContent=free?'הסיבוב הראשון בכל יום בחינם.':'הסיבוב החינמי של היום נוצל. יש לך '+S.coins+' ניצוצות.';};
-  const btn=el('button',{class:'primary',onclick:()=>{if(spinning)return;const free=S.spin!==today();if(!free&&S.coins<SPIN_COST)return;if(free)S.spin=today();else S.coins-=SPIN_COST;
-    const i=pickWheel(),w=WHEEL[i];let before=0;for(let j=0;j<i;j++)before+=WHEEL[j].w;const mid=(before+w.w*(.5+rand(-.3,.3)))/100*6.2832;
-    const text=wheelPrize(w);persist();spinning=true;res.textContent='';setBtn();const from=rot;let to=-Math.PI/2-mid;while(to<from+6.2832*5)to+=6.2832;const t0=performance.now();let lastTick=0;
-    const step=now=>{const k=Math.min(1,(now-t0)/4200),e=1-Math.pow(1-k,3);rot=from+(to-from)*e;paint();const tk=Math.floor(rot/.5);if(tk!==lastTick){lastTick=tk;beep(500,.02,'square',.02);}
-      if(k<1)requestAnimationFrame(step);else{spinning=false;res.textContent=text;refreshHud();setBtn();beep(660,.1);beep(880,.1);beep(1320,.2);}};requestAnimationFrame(step);}});
+  const setBtn=()=>{const free=S.spin!==today();btn.textContent=free?'ניסיון חינם':'ניסיון ב-'+SPIN_COST+' ניצוצות';btn.disabled=busy||(!free&&S.coins<SPIN_COST);note.textContent=free?'הניסיון הראשון בכל יום בחינם.':'הניסיון החינמי של היום נוצל. יש לך '+S.coins+' ניצוצות.';};
+  const btn=el('button',{class:'primary',onclick:()=>{if(busy)return;const free=S.spin!==today();if(!free&&S.coins<SPIN_COST)return;if(free)S.spin=today();else S.coins-=SPIN_COST;
+    const target=pickWheel(),text=wheelPrize(WHEEL[target]);persist();busy=true;res.textContent='';mid.textContent='…';cells.forEach(c=>c.classList.remove('won'));setBtn();
+    const total=24+((target-(lit<0?7:lit)+8)%8||8);let n=0;
+    const hop=()=>{lit=(lit+1)%8;n++;show();beep(480+lit*40,.03,'square',.02);if(n<total)setTimeout(hop,55+330*Math.pow(n/total,3));else{busy=false;cells[lit].classList.add('won');mid.textContent='✦';res.textContent=text;refreshHud();setBtn();beep(660,.1);beep(880,.1);beep(1320,.2);}};hop();}});
   const leg=el('div',{style:'display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;font-size:14px'});
-  [...WHEEL].sort((p,q)=>q.w-p.w).forEach(w=>leg.append(el('div',{style:'display:flex;gap:6px;align-items:center'},el('i',{style:'width:12px;height:12px;border-radius:50%;flex:none;background:'+w.c}),el('span',{text:w.t+' · '+w.w+'%'}))));
-  b.append(c,res,btn,note,el('b',{text:'הסיכויים לכל פרס'}),leg,el('p',{class:'muted',text:'יש '+RARE_TOTAL+' פריטים נדירים, ללבוש ולבית. הם מגיעים רק מהגלגל ומהתיבה היומית, ואפשר לראות את כולם במסך האוסף.'}));setBtn();});}
+  [...WHEEL].sort((p,q)=>q.w-p.w).forEach(w=>leg.append(el('div',{style:'display:flex;gap:6px;align-items:center'},el('i',{style:'width:12px;height:12px;border-radius:50%;flex:none;border:1px solid rgba(90,62,43,.4);background:'+mix(w.c,'#ffffff',.35)}),el('span',{text:w.t+' · '+w.w+'%'}))));
+  b.append(el('p',{class:'muted',style:'text-align:center',text:'האור רץ בין שמונת הפנסים ונעצר על אחד מהם.'}),grid,res,btn,note,el('b',{text:'הסיכויים לכל פרס'}),el('p',{class:'muted',text:'הפנסים נראים שווים, אבל הסיכויים שונים:'}),leg,el('p',{class:'muted',text:'יש '+RARE_TOTAL+' פריטים נדירים, ללבוש ולבית. הם מגיעים רק מפנסי המזל ומהתיבה היומית, ואפשר לראות את כולם במסך האוסף.'}));setBtn();});}
 function openOwl(){openSheet('חידת הינשוף',b=>{if(S.owl===today()){b.append(el('p',{text:'הוּ-הוּ. את החידה של היום כבר פתרת. חידה חדשה תחכה לך מחר.'}));return;}
   const r=RIDDLES[Math.floor(Date.now()/864e5)%RIDDLES.length];let tries=0;const msg=el('p',{class:'muted',text:'תשובה נכונה בניסיון הראשון שווה 25 ניצוצות.'});
   b.append(el('p',{text:r.q,style:'font-size:18px;font-weight:500'}));const box=el('div',{class:'maplist'});
@@ -894,7 +913,7 @@ function openOwl(){openSheet('חידת הינשוף',b=>{if(S.owl===today()){b.a
 function openTest(){openSheet('כלי בדיקה',b=>{b.append(el('p',{class:'muted',text:'הכפתור הזה מופיע רק אצלך, כבעלת העולם. שחקנים אחרים לא רואים אותו.'}),
   el('button',{class:'primary',text:'לקבל 1,000 ניצוצות',onclick:()=>{S.coins+=1000;persist();refreshHud();toast('נוספו 1,000 ניצוצות.');}}),
   el('button',{class:'primary',text:'לקבל פריט נדיר אקראי',onclick:()=>{const n=giveRare();persist();refreshHud();toast('קיבלת: '+n+'.');}}),
-  el('button',{class:'ghost',text:'לאפס את היומיים: תיבה, גלגל, ינשוף, טריוויה',onclick:()=>{S.gift=S.spin=S.owl='';S.triv=null;persist();refreshHud();toast('הדברים היומיים אופסו.');}}),
+  el('button',{class:'ghost',text:'לאפס את היומיים: תיבה, פנסים, ינשוף, טריוויה',onclick:()=>{S.gift=S.spin=S.owl='';S.triv=null;persist();refreshHud();toast('הדברים היומיים אופסו.');}}),
   el('button',{class:'ghost',text:'לקבל 3 מכל חומר גלם',onclick:()=>{for(const k in ITEMS)if(!ITEMS[k].v)addItem(k,3);persist();toast('נוספו חומרי גלם למלאי.');}}),
   el('button',{class:'ghost',text:'להבשיל את כל הצמחים עכשיו',onclick:()=>{(S.garden||[]).forEach(g=>{if(g)g.at=0;});persist();toast('כל הצמחים מוכנים לקטיף.');}}));});}
 $('bTest').addEventListener('click',openTest);
@@ -906,7 +925,7 @@ function openAlbum(){openSheet('האוסף שלי',b=>{b.append(el('p',{text:'ר
   sec('אביזרים',Object.keys(ACCS).filter(k=>k!=='none'),k=>(S.accs||[]).includes(k),k=>avatarPreview(S.color,'none',k),k=>ACCS[k].n,k=>false);
   sec('חיות',Object.keys(PETS),k=>(S.pets||[]).includes(k),k=>preview(()=>{ctx.translate(42,80);ctx.scale(1.35,1.35);drawPet(k,0,0,1,1);}),k=>PETS[k].n,k=>PETS[k].rare);
   sec('רהיטים',Object.keys(FURN),k=>!!S.furn[k],k=>preview(()=>{ctx.translate(42,k==='rug'?44:80);ctx.scale(.42,.42);drawFurn(k,0,0);}),k=>FURN[k].n,k=>FURN[k].rare);});}
-function openGuide(){openSheet('מה עושים כאן?',b=>{const tips=[['הולכים','לוחצים על האדמה. במחשב אפשר גם בחיצים.'],['ניצוצות','אוספים מהאדמה, ממשחקים וממשימות, וקונים בהם כובעים, אביזרים, חיות ורהיטים.'],['כל יום','תיבת מתנה וגלגל מזל בכיכר, חידת ינשוף ביער וטריוויה ברובע הניאון.'],['משחקים','דיג וגחליליות בחוף, זיכרון ביער, כוכבים בפסגה, וקצב, מילים ומיזוג ברובע הניאון.'],['גינה ובית','באי הגנים שותלים וחוזרים לקטוף. בבית מסדרים רהיטים וצובעים קירות ורצפה.'],['שוק הדוכנים','דוכנים של אנשים אמיתיים: נכנסים, רואים מוצרים ומחירים, ומזמינים. באוהל הריפוי קובעים טיפולים. רוצים למכור? פותחים דוכן במשרד השוק.'],['מפה ואוסף','המפה מקפיצה לכל אי. במסך האוסף רואים הישגים ופריטים נדירים.']];
+function openGuide(){openSheet('מה עושים כאן?',b=>{const tips=[['הולכים','לוחצים על האדמה. במחשב אפשר גם בחיצים.'],['ניצוצות','אוספים מהאדמה, ממשחקים וממשימות, וקונים בהם כובעים, אביזרים, חיות ורהיטים.'],['כל יום','תיבת מתנה ופנסי מזל בכיכר, חידת ינשוף ביער וטריוויה ברובע הניאון.'],['משחקים','דיג וגחליליות בחוף, זיכרון ביער, כוכבים בפסגה, וקצב, מילים ומיזוג ברובע הניאון.'],['גינה ובית','באי הגנים שותלים וחוזרים לקטוף. בבית מסדרים רהיטים וצובעים קירות ורצפה.'],['שוק הדוכנים','דוכנים של אנשים אמיתיים: נכנסים, רואים מוצרים ומחירים, ומזמינים. באוהל הריפוי קובעים טיפולים. רוצים למכור? פותחים דוכן במשרד השוק.'],['מפה ואוסף','המפה מקפיצה לכל אי. במסך האוסף רואים הישגים ופריטים נדירים.']];
   for(const[t,d] of tips)b.append(el('div',{class:'quest'},el('b',{text:t}),el('span',{class:'muted',text:d})));b.append(el('button',{class:'primary',text:'הבנתי, יוצאים לדרך',onclick:closeSheet}));});}
 $('bAlbum').addEventListener('click',openAlbum);
 $('bSound').addEventListener('click',()=>{S.mute=!S.mute;persist();refreshHud();});
@@ -919,11 +938,12 @@ const gc=$('gcanvas'),gx=gc.getContext('2d');let G=null;
 function openGame(kind){$('game').hidden=false;gc.hidden=false;$('gpanel').replaceChildren();$('gTitle').textContent=GAMES[kind];$('gresult').hidden=true;for(const k in keys)keys[k]=false;
   const r=gc.getBoundingClientRect();const d=Math.min(devicePixelRatio||1,2);gc.width=r.width*d;gc.height=r.height*d;gx.setTransform(d,0,0,d,0,0);
   G={kind,w:r.width,h:r.height,t:30,score:0,over:false,last:performance.now(),left:0,right:0};
-  const dom=kind==='memory'||kind==='trivia'||kind==='word'||kind==='merge'||(kind==='ev'&&E().game.mode==='find');$('gboard').hidden=kind!=='memory';gc.hidden=dom;$('gpanel').hidden=!dom||kind==='memory';
+  const dom=kind==='memory'||kind==='trivia'||kind==='word'||kind==='merge'||(kind==='ev'&&E().game.mode==='find')||!!ARC[kind];$('gboard').hidden=kind!=='memory';gc.hidden=dom;$('gpanel').hidden=!dom||kind==='memory';
   if(kind==='fireflies'){G.flies=Array.from({length:7},newFly);}
   else if(kind==='stars'){G.bx=G.w/2;G.items=[];G.spawn=0;}
   else if(kind==='fishing'){G.m=0;G.dir=1;G.sp=.9;G.zw=.26;G.zx=rand(.1,.6);G.count=0;G.flash='';G.flashT=0;}
   else if(kind==='rhythm'){G.t=35;G.notes=[];G.spawn=.8;G.combo=0;G.fx=[];G.x0=0;G.lw=100;G.hy=G.h-110;}
+  else if(ARC[kind])ARC[kind]();
   else if(kind==='ev')evGameInit();
   else if(kind==='trivia')startTrivia();
   else if(kind==='word')startWord();
@@ -1017,8 +1037,64 @@ gc.addEventListener('pointerdown',e=>{if(!G||G.over)return;const r=gc.getBoundin
   if(G.kind==='fireflies'){let best=-1,bd=44;G.flies.forEach((f,i)=>{const d=Math.hypot(f.x-x,f.y-y);if(d<bd){bd=d;best=i;}});if(best>=0){G.flies[best]=newFly();G.score++;beep(1000,.06);}}
   else if(G.kind==='fishing')fishTap();else if(G.kind==='rhythm')rhythmHit(clamp(Math.floor((x-G.x0)/G.lw),0,2));else G.bx=x;});
 gc.addEventListener('pointermove',e=>{if(G&&(G.kind==='stars'||(G.kind==='ev'&&G.mode==='catch'))&&!G.over&&(e.pointerType==='mouse'||e.buttons||e.pressure>0)){G.bx=e.clientX-gc.getBoundingClientRect().left;}});
-function gameKey(e,down){if(e.key==='Escape'&&down){closeGame();return;}if(!G)return;if(G.kind==='word'||G.kind==='merge'){if(e.key.startsWith('Arrow'))e.preventDefault();if(down&&G.onKey)G.onKey(e.key);return;}if(G.kind==='rhythm'){if(down&&!e.repeat){const l={ArrowLeft:0,ArrowDown:1,ArrowRight:2}[e.key];if(l!=null){e.preventDefault();rhythmHit(l);}}return;}if(down&&!e.repeat&&(e.key===' '||e.key==='Enter')){e.preventDefault();if(G.kind==='ev')evGameTap(G.w/2,G.h/2);else fishTap();}if(e.key==='ArrowLeft'||e.key==='a')G.left=down?1:0;if(e.key==='ArrowRight'||e.key==='d')G.right=down?1:0;}
+function gameKey(e,down){if(e.key==='Escape'&&down){closeGame();return;}if(!G)return;if(G.kind==='word'||G.kind==='merge'||ARC[G.kind]){if(e.key.startsWith('Arrow'))e.preventDefault();if(down&&G.onKey)G.onKey(e.key);return;}if(G.kind==='rhythm'){if(down&&!e.repeat){const l={ArrowLeft:0,ArrowDown:1,ArrowRight:2}[e.key];if(l!=null){e.preventDefault();rhythmHit(l);}}return;}if(down&&!e.repeat&&(e.key===' '||e.key==='Enter')){e.preventDefault();if(G.kind==='ev')evGameTap(G.w/2,G.h/2);else fishTap();}if(e.key==='ArrowLeft'||e.key==='a')G.left=down?1:0;if(e.key==='ArrowRight'||e.key==='d')G.right=down?1:0;}
 $('gClose').addEventListener('click',closeGame);$('gBack').addEventListener('click',closeGame);$('gAgain').addEventListener('click',()=>{const k=G?G.kind:null;if(k)openGame(k);});
+
+/* ---------- the arcade hall: four more puzzle games ---------- */
+function drawArcade(o){const x=o.x,y=o.y,pl=.5+Math.sin(T*4)*.25;ell(x,y+6,84,34,'rgba(0,0,0,.25)');const b=isoBox(x,y,46,38,96,'#f6ead9','#e6d3f0','#cdb8e0');
+  faceQ(b.L,b.F,96,.36,.64,0,.52,'#8a6a52');faceQ(b.L,b.F,96,.1,.9,.62,.9,'#fffaf0');faceQ(b.F,b.R,96,.12,.44,.34,.7,'#bfe3ea');faceQ(b.F,b.R,96,.56,.88,.34,.7,'#f6cdb4');
+  const cs=['#f29bb4','#f2c078','#a8d8c4','#9cc4e8'];for(let i=0;i<4;i++){const u=.2+i*.2,px=b.L[0]+(b.F[0]-b.L[0])*u,py=b.L[1]+(b.F[1]-b.L[1])*u-96*.76;if(Math.floor(T*3)%4===i)glow(px,py,20,cs[i],1.4);circ(px,py,5,cs[i]);}
+  ctx.lineWidth=3;ctx.strokeStyle=rgba('#f29bb4',.5+pl*.5);ctx.beginPath();ctx.moveTo(b.L[0],b.L[1]-96);ctx.lineTo(b.F[0],b.F[1]-96);ctx.lineTo(b.R[0],b.R[1]-96);ctx.stroke();
+  label(x,y-150,'אולם המשחקים','rgba(255,207,122,.92)','#2a1d05');}
+const ARC_INFO=[['bulls','בול פגיעה','מנחשים מספר סודי בן 4 ספרות, לפי רמזים של בול ופגיעה.'],['lights','אורות הניאון','כל לחיצה הופכת את האור ואת השכנים שלו. המטרה: להדליק את כל הלוח.'],['scramble','מילה מבולבלת','האותיות התערבבו. מסדרים אותן חזרה למילה, חמש מילים נגד השעון.'],['simon','רצף הניאון','הרצף מתארך בכל סיבוב. כמה רחוק אפשר לזכור?']];
+function openArcade(){openSheet('אולם המשחקים',b=>{const l=el('div',{class:'maplist'});for(const[k,n,d]of ARC_INFO)l.append(el('button',{onclick:()=>{closeSheet();openGame(k);}},el('span',{},el('b',{text:n}),el('br'),el('small',{class:'muted',text:d}))));b.append(el('p',{class:'muted',text:'ארבעה משחקי חשיבה. כל משחק נותן ניצוצות לפי התוצאה.'}),l);});}
+
+function startBulls(){const pn=$('gpanel'),g=G,ans=[0,1,2,3,4,5,6,7,8,9].sort(()=>Math.random()-.5).slice(0,4).join('');g.ans=ans;let cur='',done=false;const rows=[];
+  let msg='מנחשים מספר בן 4 ספרות שונות. בול: ספרה נכונה במקום הנכון. פגיעה: ספרה נכונה, במקום אחר.';
+  const row=(txt,res,live)=>{const r=el('div',{class:'brow'});for(let i=0;i<4;i++)r.append(el('div',{class:'wt'+(live?'':' n'),text:txt[i]||''}));r.append(el('span',{class:'bres',text:res}));return r;};
+  const render=()=>{if(G!==g)return;const list=el('div',{class:'wgrid'});for(const q of rows)list.append(row(q.g,q.b+' בול · '+q.h+' פגיעה',false));if(!done)list.append(row(cur,'',true));
+    const kids=[el('p',{class:'muted',text:msg,style:'text-align:center;min-height:2.8em'}),list];
+    if(!done){const kb=el('div',{class:'kb'});for(const rw of[['1','2','3','4','5'],['6','7','8','9','0']]){const d=el('div');for(const ch of rw)d.append(el('button',{text:ch,disabled:cur.includes(ch),class:cur.includes(ch)?'n':'',onclick:()=>key(ch)}));kb.append(d);}
+      const d=el('div');d.append(el('button',{class:'wide',text:'מחיקה',onclick:()=>key('Backspace')}),el('button',{class:'wide',text:'שליחה',onclick:()=>key('Enter')}));kb.append(d);kids.push(kb);}
+    pn.replaceChildren(...kids);$('gInfo').textContent=done?'הסתיים':'ניחוש '+(rows.length+1)+' מתוך 8';};
+  const key=k=>{if(done||G!==g)return;if(k==='Backspace')cur=cur.slice(0,-1);else if(k==='Enter'){if(cur.length<4){msg='צריך 4 ספרות.';render();return;}let bl=0,h=0;for(let i=0;i<4;i++){if(cur[i]===ans[i])bl++;else if(ans.includes(cur[i]))h++;}rows.push({g:cur,b:bl,h});cur='';const win=bl===4;
+      if(win||rows.length===8){done=true;msg=win?'בול! פיצחת את המספר.':'המספר היה '+ans+'.';render();const n=rows.length;setTimeout(()=>{if(G===g)finishGame(win?Math.max(10,45-n*5):3,win?'פיצחת את המספר ב-'+n+' ניחושים.':'המספר היה '+ans+'. אפשר לנסות מספר חדש.');},1300);return;}
+      msg='ממשיכים.';beep(440,.05);}else if(/^[0-9]$/.test(k)&&cur.length<4&&!cur.includes(k))cur+=k;render();};
+  g.onKey=key;render();}
+
+function startLights(){const pn=$('gpanel'),g=G,N=5;let cells,moves=0,over=false;
+  const flip=i=>{const x=i%N,y=Math.floor(i/N);for(const[dx,dy]of[[0,0],[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy;if(nx>=0&&nx<N&&ny>=0&&ny<N)cells[ny*N+nx]=!cells[ny*N+nx];}};
+  do{cells=Array(N*N).fill(true);g.presses=[];const idx=[...Array(N*N).keys()].sort(()=>Math.random()-.5).slice(0,7+Math.floor(Math.random()*4));for(const i of idx){flip(i);g.presses.push(i);}}while(cells.every(v=>v));
+  const end=(win)=>{if(over)return;over=true;render();setTimeout(()=>{if(G===g)finishGame(win?Math.max(10,48-moves):2,win?'הדלקת את כל הלוח ב-'+moves+' לחיצות. פחות לחיצות שוות יותר ניצוצות.':'לא נורא. לוח חדש מחכה בפעם הבאה.');},win?900:200);};
+  const render=()=>{if(G!==g)return;const grid=el('div',{class:'lgrid'});cells.forEach((v,i)=>{const bt=el('button',{class:v?'on':'',disabled:over,onclick:()=>{if(over||G!==g)return;flip(i);moves++;beep(v?330:523,.05);if(cells.every(q=>q))end(true);else render();}});bt.setAttribute('aria-label',v?'אור דולק':'אור כבוי');grid.append(bt);});
+    pn.replaceChildren(el('p',{class:'muted',text:'כל לחיצה הופכת את האור שנלחץ ואת ארבעת השכנים שלו. המטרה: שכל האורות יידלקו.',style:'text-align:center;margin-top:3vh'}),grid,el('button',{class:'ghost',text:'לוותר על הלוח הזה',disabled:over,onclick:()=>end(false)}));
+    $('gInfo').textContent='לחיצות: '+moves+' · כבויים: '+cells.filter(v=>!v).length;};
+  render();}
+
+function startScramble(){const pn=$('gpanel'),g=G,ROUNDS=5;let round=0,solved=0,left=75,over=false,ans='',tiles=[],pick=[],msg='';
+  const fin=w=>w.slice(0,4)+(TOFIN[w[4]]||w[4]),sorted=w=>[...w].sort().join('');
+  const next=()=>{if(round>=ROUNDS){end();return;}round++;do{ans=WORDS[Math.floor(Math.random()*WORDS.length)];}while(g.used&&g.used.includes(ans));(g.used=g.used||[]).push(ans);g.ans=ans;
+    do{tiles=[...ans].sort(()=>Math.random()-.5);}while(tiles.join('')===ans);pick=[];msg='מסדרים את האותיות למילה.';render();};
+  const end=()=>{if(over)return;over=true;clearInterval(iv);render();setTimeout(()=>{if(G===g)finishGame(solved*7,'סידרת '+solved+' מילים מתוך '+ROUNDS+'. כל מילה שווה 7 ניצוצות.');},700);};
+  const check=()=>{const w=pick.map(i=>tiles[i]).join('');if(WORDS.includes(w)&&sorted(w)===sorted(ans)){solved++;beep(660,.08);beep(990,.12);msg='נכון! "'+fin(w)+'".';render();setTimeout(()=>{if(G===g&&!over)next();},650);}else{msg='זו לא המילה. מנסים שוב.';beep(180,.12,'sawtooth');pick=[];render();}};
+  const tap=i=>{if(over||G!==g||pick.includes(i)||pick.length>=5)return;pick.push(i);beep(520,.04);render();if(pick.length===5)check();};
+  const render=()=>{if(G!==g)return;const slots=el('div',{class:'wrow'});for(let i=0;i<5;i++){const ch=pick[i]!=null?tiles[pick[i]]:'';slots.append(el('div',{class:'wt'+(ch?' y':''),text:i===4&&TOFIN[ch]?TOFIN[ch]:ch}));}
+    const bank=el('div',{class:'wrow'});tiles.forEach((ch,i)=>bank.append(el('button',{class:'wt tilebtn',text:ch,disabled:over||pick.includes(i),style:pick.includes(i)?'opacity:.25':'',onclick:()=>tap(i)})));
+    pn.replaceChildren(el('p',{class:'muted',text:msg,style:'text-align:center;min-height:1.6em;margin-top:3vh'}),el('div',{class:'wgrid'},slots),el('div',{class:'wgrid',style:'margin-top:10px'},bank),
+      el('div',{class:'row',style:'justify-content:center'},el('button',{class:'ghost',text:'מחיקה',disabled:over||!pick.length,onclick:()=>{pick.pop();render();}}),el('button',{class:'ghost',text:'לדלג על המילה',disabled:over,onclick:()=>{msg='';next();}})));
+    $('gInfo').textContent='מילה '+Math.min(round,ROUNDS)+' מתוך '+ROUNDS+' · זמן: '+Math.max(0,left);};
+  const iv=setInterval(()=>{if(G!==g){clearInterval(iv);return;}left--;if(left<=0)end();else $('gInfo').textContent='מילה '+Math.min(round,ROUNDS)+' מתוך '+ROUNDS+' · זמן: '+left;},1000);
+  g.onKey=k=>{k=FIN[k]||k;if(k==='Backspace'){if(pick.length){pick.pop();render();}return;}const i=tiles.findIndex((ch,j)=>ch===k&&!pick.includes(j));if(i>=0)tap(i);};next();}
+
+function startSimon(){const pn=$('gpanel'),g=G,cs=['#f29bb4','#f2c078','#a8d8c4','#9cc4e8'],tones=[330,392,494,587];g.seq=[];let pos=0,showing=true,over=false,lit=-1;
+  const render=()=>{if(G!==g)return;const grid=el('div',{class:'sgrid'});for(let i=0;i<4;i++){const bt=el('button',{disabled:showing||over,style:'background:'+cs[i]+(lit===i?';filter:brightness(1.25);transform:scale(1.05);box-shadow:0 0 26px '+cs[i]:';opacity:.75'),onclick:()=>press(i)});bt.setAttribute('aria-label','לחצן '+(i+1));grid.append(bt);}
+    pn.replaceChildren(el('p',{class:'muted',text:over?'':showing?'מסתכלים ומקשיבים…':'עכשיו תורך: חוזרים על הרצף.',style:'text-align:center;min-height:1.6em;margin-top:4vh'}),grid);$('gInfo').textContent='אורך הרצף: '+g.seq.length;};
+  const flash=(i,ms)=>{lit=i;beep(tones[i],ms/1000*.8,'triangle',.07);render();setTimeout(()=>{if(G===g&&lit===i){lit=-1;render();}},ms*.7);};
+  const play=()=>{showing=true;pos=0;g.seq.push(Math.floor(Math.random()*4));render();const step=Math.max(300,520-g.seq.length*14);g.seq.forEach((v,k)=>setTimeout(()=>{if(G===g&&!over)flash(v,step);},500+k*step));setTimeout(()=>{if(G===g&&!over){showing=false;render();}},500+g.seq.length*step);};
+  const press=i=>{if(showing||over||G!==g)return;flash(i,260);if(i!==g.seq[pos]){over=true;beep(160,.25,'sawtooth');const n=g.seq.length-1;setTimeout(()=>{if(G===g)finishGame(Math.min(45,n*3),'זכרת רצף של '+n+'. כל שלב שווה 3 ניצוצות.');},700);return;}
+    pos++;if(pos===g.seq.length){showing=true;setTimeout(()=>{if(G===g&&!over)play();},750);}};
+  play();}
+const ARC={bulls:startBulls,lights:startLights,scramble:startScramble,simon:startSimon};
 
 /* ---------- other visitors (live room) ---------- */
 let lastSent='',lastSendAt=0,roomAt=0;
