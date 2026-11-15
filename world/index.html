@@ -920,6 +920,8 @@ $('bTest').addEventListener('click',openTest);
 (async()=>{try{const u=await window.claude.use('user');if(u&&await u.isOwner())$('bTest').hidden=false;}catch(e){}})();
 function openAlbum(){openSheet('האוסף שלי',b=>{b.append(el('p',{text:'רצף כניסות: '+(S.streak||1)+' ימים · פריטים נדירים: '+rareCount()+' מתוך '+RARE_TOTAL}),el('b',{text:'הישגים ('+(S.ach||[]).length+' מתוך '+ACH.length+')'}));
   for(const a of ACH){const v=Math.min(a.v(),a.g),done=(S.ach||[]).includes(a.id);b.append(el('div',{class:'quest'},el('div',{class:'top'},el('b',{text:(done?'✓ ':'')+a.n}),el('span',{class:'muted',text:v+' / '+a.g})),el('span',{class:'muted',text:a.d}),el('div',{class:'bar'},el('i',{style:'width:'+(v/a.g*100)+'%'}))));}
+  {const ks=Object.keys(recs()).filter(k=>recMeta(k)&&recs()[k]&&recs()[k].n).sort((x,y)=>(recs()[y].t||0)-(recs()[x].t||0));const box=el('div',{style:'display:grid;gap:8px'});for(const k of ks)box.append(el('div',{class:'quest'},el('div',{class:'top'},el('b',{text:recMeta(k).n}),recs()[k].b!=null?el('span',{class:'price',text:recAmt(recMeta(k),recs()[k].b)}):null),el('span',{class:'muted',text:recLine(k)})));
+    b.append(el('b',{text:'השיאים שלי במשחקים ('+ks.length+')'}),ks.length?box:el('p',{class:'muted',text:'עוד לא שיחקת באף משחק. השיאים שלך יופיעו כאן.'}));}
   const sec=(title,keys,own,draw,name,rare)=>{const g=el('div',{class:'grid'});let n=0;keys.forEach(k=>{const o=own(k);if(o)n++;const c=draw(k);if(!o)c.style.opacity=.22;g.append(el('div',{class:'card'+(rare(k)&&o?' on':'')},c,el('b',{text:o||!rare(k)?name(k):'נדיר: ???'})));});b.append(el('b',{text:title+' ('+n+' מתוך '+keys.length+')'}),g);};
   sec('כובעים',Object.keys(HATS).filter(k=>k!=='none'),k=>S.hats.includes(k),k=>avatarPreview(S.color,k),k=>HATS[k].n,k=>HATS[k].rare);
   sec('אביזרים',Object.keys(ACCS).filter(k=>k!=='none'),k=>(S.accs||[]).includes(k),k=>avatarPreview(S.color,'none',k),k=>ACCS[k].n,k=>false);
@@ -954,7 +956,7 @@ function openGame(kind){$('game').hidden=false;gc.hidden=false;$('gpanel').repla
 function newFly(){return{x:rand(30,G?G.w-30:300),y:rand(60,G?G.h-90:300),a:rand(0,6.28),v:rand(50,110),p:rand(0,6)};}
 function flip(b,i,s,c){if(G.lock||b.classList.contains('open')||b.classList.contains('done'))return;b.classList.add('open');b.textContent=s;b.style.color=c;G.open.push({b,i});beep(500,.05);
   if(G.open.length===2){G.tries++;$('gInfo').textContent='ניסיונות: '+G.tries;const[a,d]=G.open;G.open=[];
-    if(a.i===d.i){a.b.classList.add('done');d.b.classList.add('done');G.found++;beep(880,.1);if(G.found===6)setTimeout(()=>finishGame(Math.max(12,44-G.tries*2),'מצאת את כל הזוגות ב-'+G.tries+' ניסיונות. פחות ניסיונות שווים יותר ניצוצות.'),400);}
+    if(a.i===d.i){a.b.classList.add('done');d.b.classList.add('done');G.found++;beep(880,.1);if(G.found===6)setTimeout(()=>finishGame(Math.max(12,44-G.tries*2),'מצאת את כל הזוגות ב-'+G.tries+' ניסיונות. פחות ניסיונות שווים יותר ניצוצות.',G.tries),400);}
     else{G.lock=true;setTimeout(()=>{for(const o of[a,d]){o.b.classList.remove('open');o.b.textContent='';}if(G)G.lock=false;},750);}}}
 function gameLoop(now){if(!G||G.over||G.kind==='memory'||G.kind==='trivia'||G.kind==='word'||G.kind==='merge'||$('game').hidden)return;const dt=Math.min(.05,(now-G.last)/1000);G.last=now;G.t-=dt;const{w,h}=G;if(G.kind==='ev'){evGameFrame(dt,now,w,h);return;}
   const bg=gx.createLinearGradient(0,0,0,h);
@@ -990,9 +992,18 @@ function gameLoop(now){if(!G||G.over||G.kind==='memory'||G.kind==='trivia'||G.ki
     ell(G.bx,h-48,50,14,'#d99a3a');gx.beginPath();gx.ellipse(G.bx,h-54,50,26,0,0,Math.PI);gx.fillStyle='#ffcf7a';gx.fill();ell(G.bx,h-54,50,10,'#8a5a3c');
     ctx=mainCtx;}
   $('gInfo').textContent='נקודות: '+G.score+' · ניצוצות: '+Math.floor(G.score/RATE[G.kind])+' · זמן: '+Math.max(0,Math.ceil(G.t));
-  if(G.t<=0){finishGame(Math.floor(G.score/RATE[G.kind]),(G.kind==='rhythm'?'צברת '+G.score+' נקודות על הרחבה.':G.kind==='fishing'?'דגת '+G.count+' דגים ששווים '+G.score+' נקודות.':G.kind==='fireflies'?'תפסת '+G.score+' גחליליות.':'צברת '+G.score+' נקודות בגשם הכוכבים.')+' במשחק הזה כל '+RATE[G.kind]+' נקודות שוות ניצוץ.');return;}
+  if(G.t<=0){finishGame(Math.floor(G.score/RATE[G.kind]),(G.kind==='rhythm'?'צברת '+G.score+' נקודות על הרחבה.':G.kind==='fishing'?'דגת '+G.count+' דגים ששווים '+G.score+' נקודות.':G.kind==='fireflies'?'תפסת '+G.score+' גחליליות.':'צברת '+G.score+' נקודות בגשם הכוכבים.')+' במשחק הזה כל '+RATE[G.kind]+' נקודות שוות ניצוץ.',G.score);return;}
   requestAnimationFrame(gameLoop);}
-function finishGame(reward,text){if(!G||G.over)return;G.over=true;gain(reward);if(!S.q.games.includes(G.kind))S.q.games.push(G.kind);persist();refreshHud();beep(660,.1);beep(880,.1);beep(1320,.2);
+/* personal bests and play counts, kept in the account save */
+const RECS={fireflies:{u:'גחליליות',u1:'גחלילית אחת'},stars:{u:'נקודות',u1:'נקודה אחת'},fishing:{u:'נקודות',u1:'נקודה אחת'},rhythm:{u:'נקודות',u1:'נקודה אחת'},memory:{u:'ניסיונות',u1:'ניסיון אחד',low:1},trivia:{u:'תשובות נכונות',u1:'תשובה נכונה אחת'},word:{u:'ניחושים',u1:'ניחוש אחד',low:1,streak:1},merge:{u:'נקודות',u1:'נקודה אחת'},bulls:{u:'ניחושים',u1:'ניחוש אחד',low:1,streak:1},lights:{u:'לחיצות',u1:'לחיצה אחת',low:1,streak:1},scramble:{u:'מילים',u1:'מילה אחת'},simon:{u:'שלבים',u1:'שלב אחד'}};
+const recAmt=(m,v)=>v===1?m.u1:v+' '+m.u;
+function recMeta(kind){if(RECS[kind])return Object.assign({n:GAMES[kind]},RECS[kind]);if(typeof kind==='string'&&kind.startsWith('ev_')){const c=EVENTS[kind.slice(3)];if(c&&c.game){const f=c.game.mode==='find';return{n:c.game.n+' · '+c.name,u:f?'ניחושים':'נקודות',u1:f?'ניחוש אחד':'נקודה אחת',low:f?1:0};}}return null;}
+function recs(){if(!S.rec||typeof S.rec!=='object'||Array.isArray(S.rec))S.rec={};return S.rec;}
+function recGame(kind,v,win){const m=recMeta(kind);if(!m)return'';const all=recs(),r=all[kind]&&typeof all[kind]==='object'?all[kind]:(all[kind]={n:0,w:0});r.n=(r.n||0)+1;r.t=Date.now();const had=r.b!=null;let fresh=false;
+  if(win!==false){r.w=(r.w||0)+1;r.s=(r.s||0)+1;r.sb=Math.max(r.sb||0,r.s);if(typeof v==='number'&&isFinite(v)&&(m.low||v>0)&&(!had||(m.low?v<r.b:v>r.b))){r.b=v;fresh=true;}}else r.s=0;
+  if(fresh)return had?' שיא חדש: '+recAmt(m,v)+'!':' זה השיא הראשון שלך: '+recAmt(m,v)+'.';return r.b!=null?' השיא שלך: '+recAmt(m,r.b)+'.':'';}
+function recLine(kind){const m=recMeta(kind),r=recs()[kind];if(!m||!r||!r.n)return'';return(r.b!=null?'שיא: '+recAmt(m,r.b)+' · ':'')+(r.n===1?'שיחקת פעם אחת':'שיחקת '+r.n+' פעמים')+(m.streak&&r.sb?' · רצף ניצחונות שיא: '+r.sb:'');}
+function finishGame(reward,text,v,win){if(!G||G.over)return;G.over=true;text+=recGame(G.kind,v,win);gain(reward);if(!S.q.games.includes(G.kind))S.q.games.push(G.kind);persist();refreshHud();beep(660,.1);beep(880,.1);beep(1320,.2);
   $('gResTitle').textContent='+'+reward+' ניצוצות';$('gResText').textContent=text+' יש לך עכשיו '+S.coins+' ניצוצות.';$('gresult').hidden=false;}
 function fishTap(){if(!G||G.over||G.kind!=='fishing')return;if(G.m>=G.zx&&G.m<=G.zx+G.zw){const r=Math.random(),nt=dayK()<.3,f=FISH[r<(nt?.45:.6)?0:r<(nt?.75:.9)?1:2];G.score+=f.v;G.count++;S.q.fish=(S.q.fish||0)+1;addItem(['fs','fg','fm'][FISH.indexOf(f)],1);G.flash='תפסת '+f.n+'! +'+f.v;G.flashC=f.c;G.flashT=.9;G.zw=Math.max(.12,G.zw*.93);G.zx=rand(.05,.95-G.zw);G.sp*=1.07;beep(900,.08);}else{G.flash='הדג ברח…';G.flashC='#ff7d6b';G.flashT=.6;beep(180,.12,'sawtooth');}}
 function rhythmHit(l){if(!G||G.over||G.kind!=='rhythm')return;let best=null,bd=60;for(const n of G.notes)if(n.l===l&&!n.hit){const d=Math.abs(n.y-G.hy);if(d<bd){bd=d;best=n;}}
@@ -1003,7 +1014,7 @@ function startTrivia(){const pn=$('gpanel'),g=G,dayN=Math.floor((Date.now()-new 
   const show=()=>{if(G!==g)return;const q=pool[g.qi];$('gInfo').textContent='שאלה '+(g.qi+1)+' מתוך 5';const opts=q.slice(1).map((t,i)=>({t,ok:i===0})).sort(()=>Math.random()-.5);const box=el('div',{class:'maplist',style:'width:100%'});let locked=false;
     opts.forEach(o=>{const b=el('button',{text:o.t,onclick:()=>{if(locked)return;locked=true;if(o.ok){g.right++;b.style.borderColor='var(--mint)';b.style.background='rgba(143,199,164,.4)';beep(880,.1);}else{b.style.borderColor='var(--coral)';beep(180,.12,'sawtooth');[...box.children].forEach((c,i)=>{if(opts[i].ok){c.style.borderColor='var(--mint)';c.style.background='rgba(143,199,164,.4)';}});}
       S.triv={d:today(),right:g.right};persist();
-      setTimeout(()=>{if(G!==g)return;g.qi++;if(g.qi<5)show();else finishGame((g.right===5?(S.perfect=1,0):0)+g.right*12+(g.right===5?20:0),'ענית נכון על '+g.right+' מתוך 5 שאלות. שאלות חדשות מחר.');},1000);}});box.append(b);});
+      setTimeout(()=>{if(G!==g)return;g.qi++;if(g.qi<5)show();else finishGame((g.right===5?(S.perfect=1,0):0)+g.right*12+(g.right===5?20:0),'ענית נכון על '+g.right+' מתוך 5 שאלות. שאלות חדשות מחר.',g.right);},1000);}});box.append(b);});
     pn.replaceChildren(el('p',{text:q[0],style:'font-size:20px;font-weight:500;text-align:center;text-wrap:balance;margin-top:8vh'}),box,el('p',{class:'muted',text:'הטריוויה נפתחת פעם ביום. כל תשובה נכונה שווה 12 ניצוצות.',style:'text-align:center'}));};show();}
 let lastWord='';
 function startWord(){let ans;do{ans=WORDS[Math.floor(Math.random()*WORDS.length)];}while(ans===lastWord);lastWord=ans;const pn=$('gpanel'),g=G,st={g:[],done:false,win:false};let cur='';const fin=w=>w.slice(0,4)+(TOFIN[w[4]]||w[4]);
@@ -1016,21 +1027,22 @@ function startWord(){let ans;do{ans=WORDS[Math.floor(Math.random()*WORDS.length)
     if(!st.done){const kb=el('div',{class:'kb'});KEYS.forEach(rw=>{const d=el('div');rw.forEach(ch=>d.append(el('button',{text:ch,class:ks[ch]||'',onclick:()=>key(ch)})));kb.append(d);});const d=el('div');d.append(el('button',{class:'wide',text:'מחיקה',onclick:()=>key('Backspace')}),el('button',{class:'wide',text:'שליחה',onclick:()=>key('Enter')}));kb.append(d);kids.push(kb);}
     pn.replaceChildren(...kids);$('gInfo').textContent=st.done?'הסתיים':'ניסיון '+(st.g.length+1)+' מתוך 6';};
   const key=k=>{if(st.done||G!==g)return;k=FIN[k]||k;if(k==='Backspace')cur=cur.slice(0,-1);else if(k==='Enter'){if(cur.length<5){msg='צריך 5 אותיות.';render();return;}st.g.push(cur);const win=cur===ans;cur='';
-      if(win||st.g.length===6){st.done=true;st.win=win;if(win)S.q.word=(S.q.word||0)+1;msg=win?'בול!':'המילה הייתה "'+fin(ans)+'".';render();const n=st.g.length;setTimeout(()=>{if(G===g)finishGame(win?45-n*5:3,win?'פתרת את "'+fin(ans)+'" ב-'+n+' ניסיונות.':'המילה הייתה "'+fin(ans)+'". אפשר לנסות מילה חדשה.');},1300);return;}
+      if(win||st.g.length===6){st.done=true;st.win=win;if(win)S.q.word=(S.q.word||0)+1;msg=win?'בול!':'המילה הייתה "'+fin(ans)+'".';render();const n=st.g.length;setTimeout(()=>{if(G===g)finishGame(win?45-n*5:3,win?'פתרת את "'+fin(ans)+'" ב-'+n+' ניסיונות.':'המילה הייתה "'+fin(ans)+'". אפשר לנסות מילה חדשה.',win?n:null,win);},1300);return;}
       msg='ממשיכים.';}else if(/^[א-ת]$/.test(k)&&cur.length<5)cur+=k;render();};
   g.onKey=key;render();}
-function startMerge(){const pn=$('gpanel'),g=G;let b=Array(16).fill(0),score=0,over=false;
+function startMerge(){const pn=$('gpanel'),g=G;let b=Array(16).fill(0),score=0,over=false,resumed=false;
+  {const sv=S.mergeSave;if(sv&&Array.isArray(sv.b)&&sv.b.length===16&&sv.b.every(v=>v===0||(Number.isInteger(v)&&v>=2&&v<=131072))&&sv.b.some(v=>v)){b=sv.b.slice();score=Math.max(0,Number(sv.score)||0);resumed=true;}}
   const colors={2:'#f6ead9',4:'#f3dcc0',8:'#f6cdb4',16:'#f4b9a8',32:'#f2a7b4',64:'#e3b5d6',128:'#cdbdf0',256:'#b9d4ee',512:'#a8d8c4',1024:'#c6e0a8',2048:'#f2c078'};
   const add=()=>{const e=[];b.forEach((v,i)=>{if(!v)e.push(i);});if(e.length)b[e[Math.floor(Math.random()*e.length)]]=Math.random()<.9?2:4;};
   const line=a=>{const r=a.filter(v=>v);for(let i=0;i<r.length-1;i++)if(r[i]===r[i+1]){r[i]*=2;score+=r[i];r.splice(i+1,1);}while(r.length<4)r.push(0);return r;};
   const canMove=()=>{if(b.includes(0))return true;for(let i=0;i<16;i++){if(i%4<3&&b[i]===b[i+1])return true;if(i<12&&b[i]===b[i+4])return true;}return false;};
-  const end=()=>{if(over)return;over=true;const mx=Math.max(...b);setTimeout(()=>{if(G===g)finishGame(Math.floor(score/45),'הגעת לאריח '+mx+' עם '+score+' נקודות. במשחק הזה כל 45 נקודות שוות ניצוץ.');},600);};
-  const move=d=>{if(over||G!==g)return;const old=b.join();for(let i=0;i<4;i++){const idx=[0,1,2,3].map(j=>d==='L'?i*4+j:d==='R'?i*4+3-j:d==='U'?j*4+i:(3-j)*4+i),r=line(idx.map(k=>b[k]));idx.forEach((k,j)=>b[k]=r[j]);}if(b.join()!==old){add();beep(440,.04);}if(!canMove())end();render();};
+  const end=()=>{if(over)return;over=true;delete S.mergeSave;const mx=Math.max(...b);setTimeout(()=>{if(G===g)finishGame(Math.floor(score/45),'הגעת לאריח '+mx+' עם '+score+' נקודות. במשחק הזה כל 45 נקודות שוות ניצוץ.',score);},600);};
+  const move=d=>{if(over||G!==g)return;const old=b.join();for(let i=0;i<4;i++){const idx=[0,1,2,3].map(j=>d==='L'?i*4+j:d==='R'?i*4+3-j:d==='U'?j*4+i:(3-j)*4+i),r=line(idx.map(k=>b[k]));idx.forEach((k,j)=>b[k]=r[j]);}if(b.join()!==old){add();beep(440,.04);S.mergeSave={b:b.slice(),score};persist();}if(!canMove())end();render();};
   const render=()=>{if(G!==g)return;const grid=el('div',{style:'display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:min(100%,340px);direction:ltr;touch-action:none;background:rgba(74,55,40,.08);padding:8px;border-radius:16px'});
     b.forEach(v=>grid.append(el('div',{text:v||'',style:'aspect-ratio:1;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:'+(v>=1024?18:v>=128?22:26)+'px;background:'+(v?colors[v]||'#f2c078':'rgba(74,55,40,.06)')+';color:#4a3728'})));
     let sx=0,sy=0;grid.addEventListener('pointerdown',e=>{sx=e.clientX;sy=e.clientY;try{grid.setPointerCapture(e.pointerId);}catch(_){}});grid.addEventListener('pointerup',e=>{const dx=e.clientX-sx,dy=e.clientY-sy;if(Math.max(Math.abs(dx),Math.abs(dy))<22)return;move(Math.abs(dx)>Math.abs(dy)?(dx>0?'R':'L'):(dy>0?'D':'U'));});
-    pn.replaceChildren(el('p',{class:'muted',text:'מחליקים על הלוח או משתמשים בחיצים. אריחים זהים מתמזגים.',style:'text-align:center;margin-top:4vh'}),grid,el('button',{class:'ghost',text:'לסיים ולקבל פרס',disabled:over,onclick:end}));$('gInfo').textContent='ניקוד: '+score;};
-  g.onKey=k=>{const d={ArrowLeft:'L',ArrowRight:'R',ArrowUp:'U',ArrowDown:'D'}[k];if(d)move(d);};add();add();render();}
+    pn.replaceChildren(el('p',{class:'muted',text:(resumed?'ממשיכים מאיפה שעצרת. ':'')+'מחליקים על הלוח או משתמשים בחיצים. אריחים זהים מתמזגים.',style:'text-align:center;margin-top:4vh'}),grid,el('div',{class:'row',style:'justify-content:center'},el('button',{class:'ghost',text:'לסיים ולקבל פרס',disabled:over,onclick:end}),resumed?el('button',{class:'ghost',text:'להתחיל לוח חדש',disabled:over,onclick:()=>{b=Array(16).fill(0);score=0;resumed=false;delete S.mergeSave;persist();add();add();render();}}):null));$('gInfo').textContent='ניקוד: '+score;};
+  g.onKey=k=>{const d={ArrowLeft:'L',ArrowRight:'R',ArrowUp:'U',ArrowDown:'D'}[k];if(d)move(d);};if(resumed&&!canMove()){b=Array(16).fill(0);score=0;resumed=false;}if(!resumed){add();add();}render();}
 function closeGame(){G=null;$('game').hidden=true;lastT=performance.now();}
 gc.addEventListener('pointerdown',e=>{if(!G||G.over)return;const r=gc.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
   if(G.kind==='ev'){evGameTap(x,y);return;}
@@ -1047,7 +1059,7 @@ function drawArcade(o){const x=o.x,y=o.y,pl=.5+Math.sin(T*4)*.25;ell(x,y+6,84,34
   ctx.lineWidth=3;ctx.strokeStyle=rgba('#f29bb4',.5+pl*.5);ctx.beginPath();ctx.moveTo(b.L[0],b.L[1]-96);ctx.lineTo(b.F[0],b.F[1]-96);ctx.lineTo(b.R[0],b.R[1]-96);ctx.stroke();
   label(x,y-150,'אולם המשחקים','rgba(255,207,122,.92)','#2a1d05');}
 const ARC_INFO=[['bulls','בול פגיעה','מנחשים מספר סודי בן 4 ספרות, לפי רמזים של בול ופגיעה.'],['lights','אורות הניאון','כל לחיצה הופכת את האור ואת השכנים שלו. המטרה: להדליק את כל הלוח.'],['scramble','מילה מבולבלת','האותיות התערבבו. מסדרים אותן חזרה למילה, חמש מילים נגד השעון.'],['simon','רצף הניאון','הרצף מתארך בכל סיבוב. כמה רחוק אפשר לזכור?']];
-function openArcade(){openSheet('אולם המשחקים',b=>{const l=el('div',{class:'maplist'});for(const[k,n,d]of ARC_INFO)l.append(el('button',{onclick:()=>{closeSheet();openGame(k);}},el('span',{},el('b',{text:n}),el('br'),el('small',{class:'muted',text:d}))));b.append(el('p',{class:'muted',text:'ארבעה משחקי חשיבה. כל משחק נותן ניצוצות לפי התוצאה.'}),l);});}
+function openArcade(){openSheet('אולם המשחקים',b=>{const l=el('div',{class:'maplist'});for(const[k,n,d]of ARC_INFO)l.append(el('button',{onclick:()=>{closeSheet();openGame(k);}},el('span',{},el('b',{text:n}),el('br'),el('small',{class:'muted',text:d}),recLine(k)?el('br'):null,recLine(k)?el('small',{style:'color:var(--accent);font-weight:600',text:recLine(k)}):null)));b.append(el('p',{class:'muted',text:'ארבעה משחקי חשיבה. כל משחק נותן ניצוצות לפי התוצאה.'}),l);});}
 
 function startBulls(){const pn=$('gpanel'),g=G,ans=[0,1,2,3,4,5,6,7,8,9].sort(()=>Math.random()-.5).slice(0,4).join('');g.ans=ans;let cur='',done=false;const rows=[];
   let msg='מנחשים מספר בן 4 ספרות שונות. בול: ספרה נכונה במקום הנכון. פגיעה: ספרה נכונה, במקום אחר.';
@@ -1058,14 +1070,14 @@ function startBulls(){const pn=$('gpanel'),g=G,ans=[0,1,2,3,4,5,6,7,8,9].sort(()
       const d=el('div');d.append(el('button',{class:'wide',text:'מחיקה',onclick:()=>key('Backspace')}),el('button',{class:'wide',text:'שליחה',onclick:()=>key('Enter')}));kb.append(d);kids.push(kb);}
     pn.replaceChildren(...kids);$('gInfo').textContent=done?'הסתיים':'ניחוש '+(rows.length+1)+' מתוך 8';};
   const key=k=>{if(done||G!==g)return;if(k==='Backspace')cur=cur.slice(0,-1);else if(k==='Enter'){if(cur.length<4){msg='צריך 4 ספרות.';render();return;}let bl=0,h=0;for(let i=0;i<4;i++){if(cur[i]===ans[i])bl++;else if(ans.includes(cur[i]))h++;}rows.push({g:cur,b:bl,h});cur='';const win=bl===4;
-      if(win||rows.length===8){done=true;msg=win?'בול! פיצחת את המספר.':'המספר היה '+ans+'.';render();const n=rows.length;setTimeout(()=>{if(G===g)finishGame(win?Math.max(10,45-n*5):3,win?'פיצחת את המספר ב-'+n+' ניחושים.':'המספר היה '+ans+'. אפשר לנסות מספר חדש.');},1300);return;}
+      if(win||rows.length===8){done=true;msg=win?'בול! פיצחת את המספר.':'המספר היה '+ans+'.';render();const n=rows.length;setTimeout(()=>{if(G===g)finishGame(win?Math.max(10,45-n*5):3,win?'פיצחת את המספר ב-'+n+' ניחושים.':'המספר היה '+ans+'. אפשר לנסות מספר חדש.',win?n:null,win);},1300);return;}
       msg='ממשיכים.';beep(440,.05);}else if(/^[0-9]$/.test(k)&&cur.length<4&&!cur.includes(k))cur+=k;render();};
   g.onKey=key;render();}
 
 function startLights(){const pn=$('gpanel'),g=G,N=5;let cells,moves=0,over=false;
   const flip=i=>{const x=i%N,y=Math.floor(i/N);for(const[dx,dy]of[[0,0],[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy;if(nx>=0&&nx<N&&ny>=0&&ny<N)cells[ny*N+nx]=!cells[ny*N+nx];}};
   do{cells=Array(N*N).fill(true);g.presses=[];const idx=[...Array(N*N).keys()].sort(()=>Math.random()-.5).slice(0,7+Math.floor(Math.random()*4));for(const i of idx){flip(i);g.presses.push(i);}}while(cells.every(v=>v));
-  const end=(win)=>{if(over)return;over=true;render();setTimeout(()=>{if(G===g)finishGame(win?Math.max(10,48-moves):2,win?'הדלקת את כל הלוח ב-'+moves+' לחיצות. פחות לחיצות שוות יותר ניצוצות.':'לא נורא. לוח חדש מחכה בפעם הבאה.');},win?900:200);};
+  const end=(win)=>{if(over)return;over=true;render();setTimeout(()=>{if(G===g)finishGame(win?Math.max(10,48-moves):2,win?'הדלקת את כל הלוח ב-'+moves+' לחיצות. פחות לחיצות שוות יותר ניצוצות.':'לא נורא. לוח חדש מחכה בפעם הבאה.',win?moves:null,win);},win?900:200);};
   const render=()=>{if(G!==g)return;const grid=el('div',{class:'lgrid'});cells.forEach((v,i)=>{const bt=el('button',{class:v?'on':'',disabled:over,onclick:()=>{if(over||G!==g)return;flip(i);moves++;beep(v?330:523,.05);if(cells.every(q=>q))end(true);else render();}});bt.setAttribute('aria-label',v?'אור דולק':'אור כבוי');grid.append(bt);});
     pn.replaceChildren(el('p',{class:'muted',text:'כל לחיצה הופכת את האור שנלחץ ואת ארבעת השכנים שלו. המטרה: שכל האורות יידלקו.',style:'text-align:center;margin-top:3vh'}),grid,el('button',{class:'ghost',text:'לוותר על הלוח הזה',disabled:over,onclick:()=>end(false)}));
     $('gInfo').textContent='לחיצות: '+moves+' · כבויים: '+cells.filter(v=>!v).length;};
@@ -1075,7 +1087,7 @@ function startScramble(){const pn=$('gpanel'),g=G,ROUNDS=5;let round=0,solved=0,
   const fin=w=>w.slice(0,4)+(TOFIN[w[4]]||w[4]),sorted=w=>[...w].sort().join('');
   const next=()=>{if(round>=ROUNDS){end();return;}round++;do{ans=WORDS[Math.floor(Math.random()*WORDS.length)];}while(g.used&&g.used.includes(ans));(g.used=g.used||[]).push(ans);g.ans=ans;
     do{tiles=[...ans].sort(()=>Math.random()-.5);}while(tiles.join('')===ans);pick=[];msg='מסדרים את האותיות למילה.';render();};
-  const end=()=>{if(over)return;over=true;clearInterval(iv);render();setTimeout(()=>{if(G===g)finishGame(solved*7,'סידרת '+solved+' מילים מתוך '+ROUNDS+'. כל מילה שווה 7 ניצוצות.');},700);};
+  const end=()=>{if(over)return;over=true;clearInterval(iv);render();setTimeout(()=>{if(G===g)finishGame(solved*7,'סידרת '+solved+' מילים מתוך '+ROUNDS+'. כל מילה שווה 7 ניצוצות.',solved);},700);};
   const check=()=>{const w=pick.map(i=>tiles[i]).join('');if(WORDS.includes(w)&&sorted(w)===sorted(ans)){solved++;beep(660,.08);beep(990,.12);msg='נכון! "'+fin(w)+'".';render();setTimeout(()=>{if(G===g&&!over)next();},650);}else{msg='זו לא המילה. מנסים שוב.';beep(180,.12,'sawtooth');pick=[];render();}};
   const tap=i=>{if(over||G!==g||pick.includes(i)||pick.length>=5)return;pick.push(i);beep(520,.04);render();if(pick.length===5)check();};
   const render=()=>{if(G!==g)return;const slots=el('div',{class:'wrow'});for(let i=0;i<5;i++){const ch=pick[i]!=null?tiles[pick[i]]:'';slots.append(el('div',{class:'wt'+(ch?' y':''),text:i===4&&TOFIN[ch]?TOFIN[ch]:ch}));}
@@ -1091,7 +1103,7 @@ function startSimon(){const pn=$('gpanel'),g=G,cs=['#f29bb4','#f2c078','#a8d8c4'
     pn.replaceChildren(el('p',{class:'muted',text:over?'':showing?'מסתכלים ומקשיבים…':'עכשיו תורך: חוזרים על הרצף.',style:'text-align:center;min-height:1.6em;margin-top:4vh'}),grid);$('gInfo').textContent='אורך הרצף: '+g.seq.length;};
   const flash=(i,ms)=>{lit=i;beep(tones[i],ms/1000*.8,'triangle',.07);render();setTimeout(()=>{if(G===g&&lit===i){lit=-1;render();}},ms*.7);};
   const play=()=>{showing=true;pos=0;g.seq.push(Math.floor(Math.random()*4));render();const step=Math.max(300,520-g.seq.length*14);g.seq.forEach((v,k)=>setTimeout(()=>{if(G===g&&!over)flash(v,step);},500+k*step));setTimeout(()=>{if(G===g&&!over){showing=false;render();}},500+g.seq.length*step);};
-  const press=i=>{if(showing||over||G!==g)return;flash(i,260);if(i!==g.seq[pos]){over=true;beep(160,.25,'sawtooth');const n=g.seq.length-1;setTimeout(()=>{if(G===g)finishGame(Math.min(45,n*3),'זכרת רצף של '+n+'. כל שלב שווה 3 ניצוצות.');},700);return;}
+  const press=i=>{if(showing||over||G!==g)return;flash(i,260);if(i!==g.seq[pos]){over=true;beep(160,.25,'sawtooth');const n=g.seq.length-1;setTimeout(()=>{if(G===g)finishGame(Math.min(45,n*3),'זכרת רצף של '+n+'. כל שלב שווה 3 ניצוצות.',n);},700);return;}
     pos++;if(pos===g.seq.length){showing=true;setTimeout(()=>{if(G===g&&!over)play();},750);}};
   play();}
 const ARC={bulls:startBulls,lights:startLights,scramble:startScramble,simon:startSimon};
@@ -1722,8 +1734,8 @@ function evGameFrame(dt,now,w,h){if(!EV.on){closeGame();return;}const c=E(),g=c.
   if(G.flashT>0){G.flashT-=dt;gx.font='700 24px Heebo, sans-serif';gx.fillStyle='#4a3728';gx.fillText(G.flash,w/2,58);}
   gx.font='500 14px Heebo, sans-serif';gx.fillStyle='rgba(74,55,40,.85)';gx.fillText(g.hint,w/2,h-18);ctx=mainCtx;
   $('gInfo').textContent='נקודות: '+G.score+' · זמן: '+Math.max(0,Math.ceil(G.t));
-  if(G.t<=0){evFinish(Math.floor(G.score/g.rate),g.end(G));return;}requestAnimationFrame(gameLoop);}
-function evFinish(coins,text){if(!G||G.over)return;G.over=true;const e=ev(),c=E();if(e.gameDay!==today()){e.gameDay=today();e.gameCoins=0;}const give=Math.max(0,Math.min(coins,EVG_CAP-(e.gameCoins||0)));e.gameCoins=(e.gameCoins||0)+give;evGain(give);e.games=(e.games||0)+1;persist();refreshHud();beep(660,.1);beep(880,.1);beep(1320,.2);
+  if(G.t<=0){evFinish(Math.floor(G.score/g.rate),g.end(G),G.score);return;}requestAnimationFrame(gameLoop);}
+function evFinish(coins,text,v){if(!G||G.over)return;G.over=true;text+=recGame('ev_'+EV.id,v);const e=ev(),c=E();if(e.gameDay!==today()){e.gameDay=today();e.gameCoins=0;}const give=Math.max(0,Math.min(coins,EVG_CAP-(e.gameCoins||0)));e.gameCoins=(e.gameCoins||0)+give;evGain(give);e.games=(e.games||0)+1;persist();refreshHud();beep(660,.1);beep(880,.1);beep(1320,.2);
   $('gResTitle').textContent='+'+give+' '+c.coin;$('gResText').textContent=text+(give<coins?' הגעת לתקרה היומית: עד '+EVG_CAP+' '+c.coin+' ביום ממשחק החג.':'');$('gresult').hidden=false;}
 function drawEvGame(o){const c=E(),c1=c.booth[0];ell(o.x,o.y+6,44,16,'rgba(0,0,0,.2)');isoBox(o.x,o.y,24,20,34,mix(c1,'#ffffff',.4),c1,mix(c1,'#5a3e2b',.2));glow(o.x,o.y-62,60,'#ffc24a',.7);
   ctx.save();ctx.translate(o.x,o.y-40-Math.abs(Math.sin(T*2))*6);ctx.scale(2.2,2.2);c.drop.draw(0,0,{p:0,i:1});ctx.restore();label(o.x,o.y-112,'משחק החג: '+c.game.n,rgba(c1,.97),'#3a2a1c');}
@@ -1790,7 +1802,7 @@ EVENTS.pesach.game={n:'מחפשים את האפיקומן',mode:'find',rate:1,hi
   init(G){const pn=$('gpanel'),g=G,tx=Math.floor(Math.random()*5),ty=Math.floor(Math.random()*5);let clicks=0;const msg=el('p',{style:'text-align:center;font-weight:600;min-height:1.5em',text:'איפה האפיקומן?'});
     const grid=el('div',{style:'display:grid;grid-template-columns:repeat(5,1fr);gap:8px;width:min(100%,340px);direction:ltr'});
     for(let i=0;i<25;i++){const bx=i%5,by=Math.floor(i/5),bt=el('button',{style:'aspect-ratio:1;border-radius:12px;background:#f6ead9;border:2px solid var(--line);font-size:13px;font-weight:600;padding:0',onclick:()=>{if(G!==g||g.over||bt.disabled)return;clicks++;$('gInfo').textContent='ניחושים: '+clicks;const d=Math.abs(bx-tx)+Math.abs(by-ty);bt.disabled=true;
-        if(!d){bt.style.background='#e8c9a0';bt.style.borderColor='#b9603f';bt.textContent='מצה!';evFinish(Math.max(3,14-clicks),'מצאת את האפיקומן ב-'+clicks+' ניחושים. פחות ניחושים שווים יותר.');return;}
+        if(!d){bt.style.background='#e8c9a0';bt.style.borderColor='#b9603f';bt.textContent='מצה!';evFinish(Math.max(3,14-clicks),'מצאת את האפיקומן ב-'+clicks+' ניחושים. פחות ניחושים שווים יותר.',clicks);return;}
         const[t,c]=d===1?['רותח','#f0a08c']:d===2?['חם','#f6cdb4']:d<=4?['פושר','#fbf1d6']:['קר','#bfe3ea'];bt.style.background=c;bt.textContent=t;msg.textContent=t+'…';beep(d<=2?700:300,.06);}});bt.setAttribute('aria-label','כרית');grid.append(bt);}
     pn.append(el('p',{style:'text-align:center;margin-top:4vh',text:this.hint}),grid,msg);$('gInfo').textContent='ניחושים: 0';}};
 
