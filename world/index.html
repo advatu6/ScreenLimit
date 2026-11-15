@@ -165,6 +165,9 @@ a.primary{text-decoration:none;text-align:center;display:block}
 #game[data-kind=lights]{--g1:#f6ecc4;--g2:#f3d9d9;--g3:#a8d8c4}
 #game[data-kind=simon]{--g1:#f3d9e6;--g2:#d6e6ee;--g3:#f2d95c}
 #game header{position:relative}
+#game header .row{flex-wrap:nowrap;gap:6px;flex:none}
+#game header .ghost,#game header .chip{padding:6px 11px;font-size:14px;white-space:nowrap}
+#game h2{min-width:0}
 #gpanel>.wgrid,#gpanel>.kb,#gpanel>.lgrid,#gpanel>.sgrid,#gboard{position:relative}
 [hidden]{display:none!important}
 @media(prefers-reduced-motion:reduce){#toast{transition:none}}
@@ -220,7 +223,7 @@ a.primary{text-decoration:none;text-align:center;display:block}
 <div id="game" hidden>
   <header>
     <h2 id="gTitle"></h2>
-    <div class="row"><span class="chip" id="gInfo"></span><button class="ghost" id="gClose">יציאה</button></div>
+    <div class="row"><span class="chip" id="gInfo"></span><button class="ghost" id="gHall" hidden>לאולם</button><button class="ghost" id="gClose">יציאה</button></div>
   </header>
   <div id="gstage">
     <canvas id="gdeco" aria-hidden="true"></canvas>
@@ -229,7 +232,7 @@ a.primary{text-decoration:none;text-align:center;display:block}
     <div id="gpanel" hidden></div>
     <div id="gresult" hidden>
       <h3 id="gResTitle"></h3><p id="gResText"></p>
-      <div class="row" style="justify-content:center"><button class="primary" id="gAgain">שוב</button><button class="ghost" id="gBack">חזרה לעולם</button></div>
+      <div class="row" style="justify-content:center"><button class="primary" id="gAgain">שוב</button><button class="ghost" id="gOther" hidden>למשחק אחר</button><button class="ghost" id="gBack">חזרה לעולם</button></div>
     </div>
   </div>
 </div>
@@ -1006,7 +1009,7 @@ $('bMap').addEventListener('click',openMap);$('bMe').addEventListener('click',()
 /* points per spark, by difficulty: harder games pay a spark for fewer points */
 const RATE={fireflies:3,stars:2,fishing:2,rhythm:3};
 const gc=$('gcanvas'),gx=gc.getContext('2d');let G=null;
-function openGame(kind){$('game').dataset.kind=kind;$('game').hidden=false;gc.hidden=false;$('gpanel').replaceChildren();$('gTitle').textContent=GAMES[kind];$('gresult').hidden=true;for(const k in keys)keys[k]=false;
+function openGame(kind){$('game').dataset.kind=kind;$('gHall').hidden=$('gOther').hidden=!ARC[kind];$('game').hidden=false;gc.hidden=false;$('gpanel').replaceChildren();$('gTitle').textContent=GAMES[kind];$('gresult').hidden=true;for(const k in keys)keys[k]=false;
   const r=gc.getBoundingClientRect();const d=Math.min(devicePixelRatio||1,2);gc.width=r.width*d;gc.height=r.height*d;gx.setTransform(d,0,0,d,0,0);sceneInit(kind,r,d);
   G={kind,w:r.width,h:r.height,t:30,score:0,over:false,last:performance.now(),left:0,right:0};
   const dom=kind==='memory'||kind==='trivia'||kind==='word'||kind==='merge'||(kind==='ev'&&E().game.mode==='find')||!!ARC[kind];$('gboard').hidden=kind!=='memory';gc.hidden=dom;$('gpanel').hidden=!dom||kind==='memory';
@@ -1120,7 +1123,8 @@ gc.addEventListener('pointerdown',e=>{if(!G||G.over)return;const r=gc.getBoundin
   else if(G.kind==='fishing')fishTap();else if(G.kind==='rhythm')rhythmHit(clamp(Math.floor((x-G.x0)/G.lw),0,2));else G.bx=x;});
 gc.addEventListener('pointermove',e=>{if(G&&(G.kind==='stars'||(G.kind==='ev'&&G.mode==='catch'))&&!G.over&&(e.pointerType==='mouse'||e.buttons||e.pressure>0)){G.bx=e.clientX-gc.getBoundingClientRect().left;}});
 function gameKey(e,down){if(e.key==='Escape'&&down){closeGame();return;}if(!G)return;if(G.kind==='word'||G.kind==='merge'||ARC[G.kind]){if(e.key.startsWith('Arrow'))e.preventDefault();if(down&&G.onKey)G.onKey(e.key);return;}if(G.kind==='rhythm'){if(down&&!e.repeat){const l={ArrowLeft:0,ArrowDown:1,ArrowRight:2}[e.key];if(l!=null){e.preventDefault();rhythmHit(l);}}return;}if(down&&!e.repeat&&(e.key===' '||e.key==='Enter')){e.preventDefault();if(G.kind==='ev')evGameTap(G.w/2,G.h/2);else fishTap();}if(e.key==='ArrowLeft'||e.key==='a')G.left=down?1:0;if(e.key==='ArrowRight'||e.key==='d')G.right=down?1:0;}
-$('gClose').addEventListener('click',closeGame);$('gBack').addEventListener('click',closeGame);$('gAgain').addEventListener('click',()=>{const k=G?G.kind:null;if(k)openGame(k);});
+$('gClose').addEventListener('click',closeGame);
+for(const id of['gHall','gOther'])$(id).addEventListener('click',()=>{closeGame();openArcade();});$('gBack').addEventListener('click',closeGame);$('gAgain').addEventListener('click',()=>{const k=G?G.kind:null;if(k)openGame(k);});
 
 /* ---------- the arcade hall: four more puzzle games ---------- */
 function drawArcade(o){const x=o.x,y=o.y,pl=.5+Math.sin(T*4)*.25;ell(x,y+6,84,34,'rgba(0,0,0,.25)');const b=isoBox(x,y,46,38,96,'#f6ead9','#e6d3f0','#cdb8e0');
